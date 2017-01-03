@@ -130,9 +130,10 @@ public class RegisterActivity extends Activity {
                                 .getString("created_at");
                         String uid = user
                                 .getString("id");
+                        int points = user.getInt("id");
 
                         // Inserting row in users table
-                        db.addUser(name, email, uid, created_at);
+                        db.addUser(name, email, uid, created_at, points);
 
                         Toast.makeText(getApplicationContext(), "User successfully registered. Try login now!", Toast.LENGTH_LONG).show();
 

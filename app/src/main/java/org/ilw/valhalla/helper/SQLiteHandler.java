@@ -15,7 +15,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
 
     // All Static variables
     // Database Version
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 7;
 
     // Database Name
     private static final String DATABASE_NAME = "android_api";
@@ -23,12 +23,28 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     // Login table name
     private static final String TABLE_USER = "user";
 
+    // Game table name
+    private static final String TABLE_GAME = "game";
+
     // Login Table Columns names
     private static final String KEY_ID = "id";
     private static final String KEY_NAME = "name";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_UID = "uid";
     private static final String KEY_CREATED_AT = "created_at";
+    private static final String KEY_POINTS = "points";
+
+    // Game Table Columns names
+    private static final String KEY_GAME_ID = "id";
+    private static final String KEY_GAME_GAMER1ID = "gamer1id";
+    private static final String KEY_GAME_GAMER1NAME = "gamer1name";
+    private static final String KEY_GAME_GAMER1POINTS = "gamer1points";
+    private static final String KEY_GAME_GAMER2ID = "gamer2id";
+    private static final String KEY_GAME_GAMER2NAME = "gamer2name";
+    private static final String KEY_GAME_GAMER2POINTS = "gamer2points";
+    private static final String KEY_GAME_UID = "uid";
+    private static final String KEY_GAME_CREATED_AT = "created_at";
+    private static final String KEY_GAME_STATUS = "status";
 
     public SQLiteHandler(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -37,11 +53,18 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     // Creating Tables
     @Override
     public void onCreate(SQLiteDatabase db) {
+
         String CREATE_LOGIN_TABLE = "CREATE TABLE " + TABLE_USER + "("
                 + KEY_ID + " INTEGER PRIMARY KEY," + KEY_NAME + " TEXT,"
                 + KEY_EMAIL + " TEXT UNIQUE," + KEY_UID + " TEXT,"
-                + KEY_CREATED_AT + " TEXT" + ")";
+                + KEY_CREATED_AT + " TEXT, " + KEY_POINTS + " INTEGER"+ ")";
         db.execSQL(CREATE_LOGIN_TABLE);
+
+        String CREATE_GAME_TABLE = "CREATE TABLE " + TABLE_GAME + "("
+                + KEY_GAME_ID + " INTEGER PRIMARY KEY," + KEY_GAME_GAMER1ID + " TEXT,"+ KEY_GAME_GAMER1NAME + " TEXT,"+ KEY_GAME_GAMER1POINTS + " TEXT,"
+                + KEY_GAME_GAMER2ID + " TEXT,"+ KEY_GAME_GAMER2NAME + " TEXT,"+ KEY_GAME_GAMER2POINTS + KEY_GAME_UID + " TEXT,"
+                + KEY_GAME_CREATED_AT + " TEXT, " + KEY_GAME_STATUS + " INTEGER"+ ")";
+        db.execSQL(CREATE_GAME_TABLE);
 
         Log.d(TAG, "Database tables created");
     }
@@ -51,7 +74,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // Drop older table if existed
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USER);
-
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_GAME);
         // Create tables again
         onCreate(db);
     }
@@ -59,7 +82,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     /**
      * Storing user details in database
      * */
-    public void addUser(String name, String email, String uid, String created_at) {
+    public void addUser(String name, String email, String uid, String created_at, int points) {
         SQLiteDatabase db = this.getWritableDatabase();
 
         ContentValues values = new ContentValues();
@@ -67,12 +90,37 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         values.put(KEY_EMAIL, email); // Email
         values.put(KEY_UID, uid); // Email
         values.put(KEY_CREATED_AT, created_at); // Created At
-
+        values.put(KEY_POINTS, points); // Points
         // Inserting Row
         long id = db.insert(TABLE_USER, null, values);
         db.close(); // Closing database connection
 
         Log.d(TAG, "New user inserted into sqlite: " + id);
+    }
+
+    /**
+     * Storing user details in database
+     * */
+    public void addGame(String gamer1id, String gamer1name, String gamer1points, String gamer2id, String gamer2name, String gamer2points, String uid, String created_at, String status) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(KEY_GAME_GAMER1ID, gamer1id);
+        values.put(KEY_GAME_GAMER1NAME, gamer1name);
+        values.put(KEY_GAME_GAMER1POINTS, gamer1points);
+        values.put(KEY_GAME_GAMER2ID, gamer2id);
+        values.put(KEY_GAME_GAMER2NAME, gamer2name);
+        values.put(KEY_GAME_GAMER2POINTS, gamer2points);
+
+        values.put(KEY_UID, uid); // Email
+        values.put(KEY_CREATED_AT, created_at); // Created At
+        values.put(KEY_GAME_STATUS, status); // Points
+
+        // Inserting Row
+        long id = db.insert(TABLE_GAME, null, values);
+        db.close(); // Closing database connection
+
+        Log.d(TAG, "New game inserted into sqlite: " + id);
     }
 
     /**
@@ -91,6 +139,8 @@ public class SQLiteHandler extends SQLiteOpenHelper {
             user.put("email", cursor.getString(2));
             user.put("uid", cursor.getString(3));
             user.put("created_at", cursor.getString(4));
+
+            user.put("points", Integer.toString(cursor.getInt(5)));
         }
         cursor.close();
         db.close();
