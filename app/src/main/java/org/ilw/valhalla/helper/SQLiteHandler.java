@@ -15,7 +15,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
 
     // All Static variables
     // Database Version
-    private static final int DATABASE_VERSION = 7;
+    private static final int DATABASE_VERSION = 12;
 
     // Database Name
     private static final String DATABASE_NAME = "android_api";
@@ -33,7 +33,6 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     private static final String KEY_UID = "uid";
     private static final String KEY_CREATED_AT = "created_at";
     private static final String KEY_POINTS = "points";
-
     // Game Table Columns names
     private static final String KEY_GAME_ID = "id";
     private static final String KEY_GAME_GAMER1ID = "gamer1id";
@@ -57,12 +56,12 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         String CREATE_LOGIN_TABLE = "CREATE TABLE " + TABLE_USER + "("
                 + KEY_ID + " INTEGER PRIMARY KEY," + KEY_NAME + " TEXT,"
                 + KEY_EMAIL + " TEXT UNIQUE," + KEY_UID + " TEXT,"
-                + KEY_CREATED_AT + " TEXT, " + KEY_POINTS + " INTEGER"+ ")";
+                + KEY_CREATED_AT + " TEXT, " + KEY_POINTS + " INTEGER" +")";
         db.execSQL(CREATE_LOGIN_TABLE);
 
         String CREATE_GAME_TABLE = "CREATE TABLE " + TABLE_GAME + "("
-                + KEY_GAME_ID + " INTEGER PRIMARY KEY," + KEY_GAME_GAMER1ID + " TEXT,"+ KEY_GAME_GAMER1NAME + " TEXT,"+ KEY_GAME_GAMER1POINTS + " TEXT,"
-                + KEY_GAME_GAMER2ID + " TEXT,"+ KEY_GAME_GAMER2NAME + " TEXT,"+ KEY_GAME_GAMER2POINTS + KEY_GAME_UID + " TEXT,"
+                + KEY_GAME_ID + " STRING PRIMARY KEY," + KEY_GAME_GAMER1ID + " TEXT,"+ KEY_GAME_GAMER1NAME + " TEXT,"+ KEY_GAME_GAMER1POINTS + " TEXT,"
+                + KEY_GAME_GAMER2ID + " TEXT,"+ KEY_GAME_GAMER2NAME + " TEXT,"+ KEY_GAME_GAMER2POINTS  + " TEXT," + KEY_GAME_UID + " TEXT,"
                 + KEY_GAME_CREATED_AT + " TEXT, " + KEY_GAME_STATUS + " INTEGER"+ ")";
         db.execSQL(CREATE_GAME_TABLE);
 
@@ -101,10 +100,13 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     /**
      * Storing user details in database
      * */
-    public void addGame(String gamer1id, String gamer1name, String gamer1points, String gamer2id, String gamer2name, String gamer2points, String uid, String created_at, String status) {
+    public void addGame(String gameid, String gamer1id, String gamer1name, String gamer1points, String gamer2id, String gamer2name, String gamer2points, String uid, String created_at, String status) {
         SQLiteDatabase db = this.getWritableDatabase();
 
         ContentValues values = new ContentValues();
+        Log.d(TAG, gameid);
+
+        values.put(KEY_GAME_ID, gameid);
         values.put(KEY_GAME_GAMER1ID, gamer1id);
         values.put(KEY_GAME_GAMER1NAME, gamer1name);
         values.put(KEY_GAME_GAMER1POINTS, gamer1points);
@@ -148,6 +150,48 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         Log.d(TAG, "Fetching user from Sqlite: " + user.toString());
 
         return user;
+    }
+
+    /**
+     * Getting game data from database
+     * */
+    public HashMap<String, String> getGameDetails() {
+        HashMap<String, String> game = new HashMap<String, String>();
+        String selectQuery = "SELECT  * FROM " + TABLE_GAME;
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(selectQuery, null);
+        // Move to first row
+        cursor.moveToFirst();
+        if (cursor.getCount() > 0) {
+            game.put("id", cursor.getString(0));
+            game.put("gamer1id", cursor.getString(1));
+            game.put("gamer1name", cursor.getString(2));
+            game.put("gamer1points", cursor.getString(3));
+            game.put("gamer2id", cursor.getString(4));
+            game.put("gamer2name", cursor.getString(5));
+            game.put("gamer2points", cursor.getString(6));
+            game.put("created_at", cursor.getString(7));
+            game.put("status", cursor.getString(8));
+        }
+        cursor.close();
+        db.close();
+        // return game
+        Log.d(TAG, "Fetching game from Sqlite: " + game.toString());
+
+        return game;
+    }
+
+    /**
+     * Delete game from DB
+     * */
+    public void deleteGame() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        // Delete All Rows
+        db.delete(TABLE_GAME, null, null);
+        db.close();
+
+        Log.d(TAG, "Delete game info from sqlite");
     }
 
     /**

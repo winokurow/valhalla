@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -41,6 +42,7 @@ public class MainActivity extends Activity {
     private Button btnLogout;
     private Button btnAddNewGame;
     private LinearLayout myLinearLayout;
+    private LinearLayout waitviewLayout;
     private Context context;
 
     private ProgressDialog pDialog;
@@ -57,8 +59,11 @@ public class MainActivity extends Activity {
         txtName = (TextView) findViewById(R.id.name);
         txtPoints = (TextView) findViewById(R.id.points);
         btnLogout = (Button) findViewById(R.id.btnLogout);
+
         btnAddNewGame = (Button) findViewById(R.id.btnAddGame);
+
         myLinearLayout = (LinearLayout) findViewById(R.id.gameslist);
+        waitviewLayout = (LinearLayout) findViewById(R.id.waitview);
         context = this;
         // Progress dialog
         pDialog = new ProgressDialog(this);
@@ -84,7 +89,17 @@ public class MainActivity extends Activity {
         txtName.setText(name);
         txtPoints.setText("Fans: " + points);
 
-        getGames("WAITING");
+        // Fetching game details from sqlite
+        final HashMap<String, String> game = db.getGameDetails();
+        Log.d(TAG, "game.size()=" + Integer.toString(game.size()));
+        if (game.size()!=0)
+        {
+            createWaitView(game.get("id"));
+
+        } else {
+            getGames("WAITING");
+        }
+
 
         // Add new Game
         btnAddNewGame.setOnClickListener(new View.OnClickListener() {
@@ -103,6 +118,57 @@ public class MainActivity extends Activity {
                 logoutUser();
             }
         });
+    }
+
+    private void createWaitView(final String gameID) {
+        btnAddNewGame.setEnabled(false);
+        btnAddNewGame.setAlpha(.5f);
+        btnAddNewGame.setClickable(false);
+
+        final LinearLayout newLinearLayout = new LinearLayout(context);
+        LinearLayout.LayoutParams buttonLayoutParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+        buttonLayoutParams.setMargins(10, 10, 0, 0);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.CENTER;
+        params.setMargins(5, 5, 5, 5);
+        newLinearLayout.setOrientation(LinearLayout.VERTICAL);
+        newLinearLayout.setLayoutParams(params);
+
+        final TextView rowTextView = new TextView(context);
+        params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.CENTER;
+        params.setMargins(5, 5, 5, 5);
+        params.leftMargin = 15;
+        rowTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+        rowTextView.setText("Awaiting for second player...");
+        rowTextView.setLayoutParams(params);
+        newLinearLayout.addView(rowTextView);
+
+        final Button newButton = new Button(context);
+        params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.CENTER;
+        params.setMargins(5, 5, 5, 5);
+        params.leftMargin = 15;
+        params.rightMargin = 15;
+        params.topMargin = 30;
+        params.bottomMargin = 30;
+        newButton.setLayoutParams(params);
+        newButton.setText("Remove game");
+        newButton.setBackgroundResource(R.color.btn_join_bg);
+        newButton.setTextColor(getResources().getColor(R.color.white));
+        // Add new Game
+        newButton.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View view) {
+                deleteGame(gameID);
+            }
+        });
+        newLinearLayout.addView(newButton);
+
+        waitviewLayout.addView(newLinearLayout);
     }
 
     /**
@@ -146,6 +212,7 @@ public class MainActivity extends Activity {
                     if (!error) {
                         // Now store the game in SQLite
                         JSONObject game = jObj.getJSONObject("game");
+                        String gameid = game.getString("id");
                         String gamer1id = game.getString("gamer1_id");
                         String gamer1name = game.getString("gamer1_name");
                         String gamer1points = game.getString("gamer1_points");
@@ -157,8 +224,7 @@ public class MainActivity extends Activity {
                         String status = game.getString("status");
 
                         // Inserting row in users table
-                        db.addGame(gamer1id, gamer1name, gamer1points, gamer2id, gamer2name, gamer2points, uid, created_at, status);
-
+                        db.addGame(gameid, gamer1id, gamer1name, gamer1points, gamer2id, gamer2name, gamer2points, uid, created_at, status);
                     } else {
                         // Error in login. Get the error message
                         String errorMsg = jObj.getString("error_msg");
@@ -189,6 +255,73 @@ public class MainActivity extends Activity {
                 Map<String, String> params = new HashMap<String, String>();
                 params.put("user", user);
 
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * function to add new game
+     * */
+    private void deleteGame(final String gameid) {
+        // Tag used to cancel the request
+        String tag_string_req = "req_delGame";
+
+        pDialog.setMessage("Deleting Game ...");
+        showDialog();
+        Log.d(TAG, gameid);
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Delete Game Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        db.deleteGame();
+                        finish();
+                        startActivity(getIntent());
+                    } else {
+                        // Error in login. Get the error message
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                Log.d(TAG, "rrrrrrrrrrrrrrrrrrrrr");
+                Log.d(TAG, gameid);
+                params.put("uiid", gameid);
+                params.put("status", "ENDED");
                 return params;
             }
 
@@ -234,8 +367,7 @@ public class MainActivity extends Activity {
                             String uid = game
                                     .getString("id");
                             String status = game.getString("status");
-                            games.add(new Game(uid, gamer1id, gamer2id, status, created_at));
-                            Log.d(TAG, Integer.toString(games.size()));
+                            games.add(new Game(uid, gamer1id, gamer1name, gamer1points, gamer2id, gamer2name, gamer2points, status, created_at));
                         }
 
                     } else {
@@ -251,26 +383,41 @@ public class MainActivity extends Activity {
                 }
 
                 if (!(games==null)) {
+                    // Fetching game details from sqlite
+                    final HashMap<String, String> game1 = db.getUserDetails();
+
                     int id = 100;
                     for (Game game : games) {
-                        Log.d(TAG, "1");
                         final LinearLayout newLinearLayout = new LinearLayout(context);
                         LinearLayout.LayoutParams buttonLayoutParams = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
                         buttonLayoutParams.setMargins(10, 10, 0, 0);
                         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT);
-                        params.gravity = Gravity.CENTER;
-                        params.setMargins(5,5,5,5);
-                        newLinearLayout.setLayoutParams(buttonLayoutParams);
+                                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
+                        params.gravity = Gravity.TOP;
+                        params.setMargins(5, 5, 5, 5);
                         newLinearLayout.setOrientation(LinearLayout.HORIZONTAL);
                         newLinearLayout.setBackgroundResource(R.drawable.border);
+                        newLinearLayout.setLayoutParams(params);
 
                         final TextView rowTextView = new TextView(context);
-                        rowTextView.setText(game.getGamer1());
+                        params = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                        params.gravity = Gravity.CENTER;
+                        params.setMargins(5, 5, 5, 5);
+                        params.leftMargin = 15;
+                        rowTextView.setText(game.getGamer1_name() + " (fans: " + game.getGamer1_points() + ")");
                         rowTextView.setLayoutParams(params);
                         newLinearLayout.addView(rowTextView);
 
                         final Button newButton = new Button(context);
+                        params = new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                        params.gravity = Gravity.CENTER;
+                        params.setMargins(5, 5, 5, 5);
+                        params.leftMargin = 15;
+                        params.rightMargin = 15;
+                        params.topMargin = 30;
+                        params.bottomMargin = 30;
                         newButton.setLayoutParams(params);
                         newButton.setText("Join");
                         newButton.setBackgroundResource(R.color.btn_join_bg);
