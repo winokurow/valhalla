@@ -2,6 +2,10 @@ package org.ilw.valhalla.app;
 
 public class AppConfig {
 
+    // Server get field
+    public static String URL_FIELD = "http://192.168.203.1:8080/evolution/fieldservice";
+
+
     // Server create new game
     public static String URL_CREATENEWGAME = "http://192.168.203.1:8080/evolution/creategameservice";
 

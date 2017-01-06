@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -50,6 +51,23 @@ public class MainActivity extends Activity {
     private SessionManager session;
     private static final String TAG = MainActivity.class.getSimpleName();
     List<Game> games;
+    List<Game> oldgames;
+    String gameid;
+    final Handler timerHandler = new Handler();
+    Runnable timerRefreshGamesRunnable = new Runnable() {
+        @Override
+        public void run() {
+            getGames("WAITING");
+            timerHandler.postDelayed(this, 10000);
+        }
+    };
+    Runnable timerWaitForPlayerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            waitForPlayer();
+            timerHandler.postDelayed(this, 10000);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +94,8 @@ public class MainActivity extends Activity {
         session = new SessionManager(getApplicationContext());
 
         if (!session.isLoggedIn()) {
+            timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+            timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
             logoutUser();
         }
 
@@ -91,13 +111,12 @@ public class MainActivity extends Activity {
 
         // Fetching game details from sqlite
         final HashMap<String, String> game = db.getGameDetails();
-        Log.d(TAG, "game.size()=" + Integer.toString(game.size()));
         if (game.size()!=0)
         {
             createWaitView(game.get("id"));
 
         } else {
-            getGames("WAITING");
+            timerHandler.postDelayed(timerRefreshGamesRunnable, 0);
         }
 
 
@@ -105,7 +124,6 @@ public class MainActivity extends Activity {
         btnAddNewGame.setOnClickListener(new View.OnClickListener() {
 
             public void onClick(View view) {
-                Log.d(TAG, "UUID" + user.get("uid"));
                 addNewGame(user.get("uid"));
             }
         });
@@ -119,12 +137,19 @@ public class MainActivity extends Activity {
             }
         });
     }
-
+    private void removeWaitView() {
+        btnAddNewGame.setEnabled(true);
+        btnAddNewGame.setAlpha(1f);
+        btnAddNewGame.setClickable(true);
+        if (((LinearLayout) waitviewLayout).getChildCount() > 0) {
+            ((LinearLayout) waitviewLayout).removeAllViews();
+        }
+    }
     private void createWaitView(final String gameID) {
         btnAddNewGame.setEnabled(false);
         btnAddNewGame.setAlpha(.5f);
         btnAddNewGame.setClickable(false);
-
+        this.gameid = gameID;
         final LinearLayout newLinearLayout = new LinearLayout(context);
         LinearLayout.LayoutParams buttonLayoutParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
         buttonLayoutParams.setMargins(10, 10, 0, 0);
@@ -169,6 +194,9 @@ public class MainActivity extends Activity {
         newLinearLayout.addView(newButton);
 
         waitviewLayout.addView(newLinearLayout);
+
+        timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
     }
 
     /**
@@ -225,6 +253,11 @@ public class MainActivity extends Activity {
 
                         // Inserting row in users table
                         db.addGame(gameid, gamer1id, gamer1name, gamer1points, gamer2id, gamer2name, gamer2points, uid, created_at, status);
+                        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+                        if (((LinearLayout) myLinearLayout).getChildCount() > 0) {
+                            ((LinearLayout) myLinearLayout).removeAllViews();
+                        }
+                        createWaitView(gameid);
                     } else {
                         // Error in login. Get the error message
                         String errorMsg = jObj.getString("error_msg");
@@ -265,7 +298,7 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * function to add new game
+     * function to delete game
      * */
     private void deleteGame(final String gameid) {
         // Tag used to cancel the request
@@ -289,8 +322,8 @@ public class MainActivity extends Activity {
                     // Check for error node in json
                     if (!error) {
                         db.deleteGame();
-                        finish();
-                        startActivity(getIntent());
+                        timerHandler.postDelayed(timerRefreshGamesRunnable, 0);
+                        removeWaitView();
                     } else {
                         // Error in login. Get the error message
                         String errorMsg = jObj.getString("error_msg");
@@ -318,8 +351,6 @@ public class MainActivity extends Activity {
             @Override
             protected Map<String, String> getParams() {
                 Map<String, String> params = new HashMap<String, String>();
-                Log.d(TAG, "rrrrrrrrrrrrrrrrrrrrr");
-                Log.d(TAG, gameid);
                 params.put("uiid", gameid);
                 params.put("status", "ENDED");
                 return params;
@@ -337,9 +368,11 @@ public class MainActivity extends Activity {
     private void getGames(final String status) {
         // Tag used to cancel the request
         String tag_string_req = "req_getGames";
+        String uri = AppConfig.URL_CREATENEWGAME + "/games/"+status;
 
+        Log.d(TAG, uri);
         StringRequest strReq = new StringRequest(Request.Method.GET,
-                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+                uri, new Response.Listener<String>() {
 
             @Override
             public void onResponse(String response) {
@@ -383,49 +416,59 @@ public class MainActivity extends Activity {
                 }
 
                 if (!(games==null)) {
-                    // Fetching game details from sqlite
-                    final HashMap<String, String> game1 = db.getUserDetails();
+                    if (!(games.equals(oldgames))) {
+                        int id = 100;
+                        if (((LinearLayout) myLinearLayout).getChildCount() > 0) {
+                            ((LinearLayout) myLinearLayout).removeAllViews();
+                        }
+                        for (final Game game : games) {
+                            final LinearLayout newLinearLayout = new LinearLayout(context);
+                            LinearLayout.LayoutParams buttonLayoutParams = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                            buttonLayoutParams.setMargins(10, 10, 0, 0);
+                            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
+                            params.gravity = Gravity.TOP;
+                            params.setMargins(5, 5, 5, 5);
+                            newLinearLayout.setOrientation(LinearLayout.HORIZONTAL);
+                            newLinearLayout.setBackgroundResource(R.drawable.border);
+                            newLinearLayout.setLayoutParams(params);
 
-                    int id = 100;
-                    for (Game game : games) {
-                        final LinearLayout newLinearLayout = new LinearLayout(context);
-                        LinearLayout.LayoutParams buttonLayoutParams = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-                        buttonLayoutParams.setMargins(10, 10, 0, 0);
-                        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
-                        params.gravity = Gravity.TOP;
-                        params.setMargins(5, 5, 5, 5);
-                        newLinearLayout.setOrientation(LinearLayout.HORIZONTAL);
-                        newLinearLayout.setBackgroundResource(R.drawable.border);
-                        newLinearLayout.setLayoutParams(params);
+                            final TextView rowTextView = new TextView(context);
+                            params = new LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                            params.gravity = Gravity.CENTER;
+                            params.setMargins(5, 5, 5, 5);
+                            params.leftMargin = 15;
+                            rowTextView.setText(game.getGamer1_name() + " (fans: " + game.getGamer1_points() + ")");
+                            rowTextView.setLayoutParams(params);
+                            newLinearLayout.addView(rowTextView);
 
-                        final TextView rowTextView = new TextView(context);
-                        params = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-                        params.gravity = Gravity.CENTER;
-                        params.setMargins(5, 5, 5, 5);
-                        params.leftMargin = 15;
-                        rowTextView.setText(game.getGamer1_name() + " (fans: " + game.getGamer1_points() + ")");
-                        rowTextView.setLayoutParams(params);
-                        newLinearLayout.addView(rowTextView);
+                            final Button newButton = new Button(context);
+                            params = new LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                            params.gravity = Gravity.CENTER;
+                            params.setMargins(5, 5, 5, 5);
+                            params.leftMargin = 15;
+                            params.rightMargin = 15;
+                            params.topMargin = 30;
+                            params.bottomMargin = 30;
+                            newButton.setLayoutParams(params);
+                            newButton.setText("Join");
+                            newButton.setBackgroundResource(R.color.btn_join_bg);
+                            newButton.setTextColor(getResources().getColor(R.color.white));
+                            // Add new Game
+                            newButton.setOnClickListener(new View.OnClickListener() {
 
-                        final Button newButton = new Button(context);
-                        params = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-                        params.gravity = Gravity.CENTER;
-                        params.setMargins(5, 5, 5, 5);
-                        params.leftMargin = 15;
-                        params.rightMargin = 15;
-                        params.topMargin = 30;
-                        params.bottomMargin = 30;
-                        newButton.setLayoutParams(params);
-                        newButton.setText("Join");
-                        newButton.setBackgroundResource(R.color.btn_join_bg);
-                        newButton.setTextColor(getResources().getColor(R.color.white));
-                        newLinearLayout.addView(newButton);
+                                public void onClick(View view) {
+                                    startGame(game.getId());
+                                }
+                            });
+                            newLinearLayout.addView(newButton);
 
-                        myLinearLayout.addView(newLinearLayout);
-                        id++;
+                            myLinearLayout.addView(newLinearLayout);
+                            id++;
+                        }
+                        oldgames = games;
                     }
                 } else
                 {
@@ -446,10 +489,9 @@ public class MainActivity extends Activity {
 
             @Override
             protected Map<String, String> getParams() {
-                // Posting parameters to login url
                 Map<String, String> params = new HashMap<String, String>();
                 params.put("status", status);
-
+                params.put("uiid", "");
                 return params;
             }
 
@@ -467,5 +509,274 @@ public class MainActivity extends Activity {
     private void hideDialog() {
         if (pDialog.isShowing())
             pDialog.dismiss();
+    }
+
+    private void startGame(final String gameID) {
+        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+        timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+        startGameReq(gameID);
+        setField();
+        Intent i = new Intent(getApplicationContext(),
+                GameActivity.class);
+        startActivity(i);
+        finish();
+    }
+
+    /**
+     * function to start game
+     * */
+    private void startGameReq(final String gameid) {
+        // Tag used to cancel the request
+        String tag_string_req = "req_startGame";
+
+        pDialog.setMessage("Starting Game ...");
+        showDialog();
+        Log.d(TAG, gameid);
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Delete Game Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+
+                        db.setGameStatus("STARTED", gameid);
+                        removeWaitView();
+                    } else {
+                        // Error in login. Get the error message
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", gameid);
+                params.put("status", "STARTED");
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * Wait for second player
+     * */
+    private void waitForPlayer() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_getGame";
+
+        StringRequest strReq = new StringRequest(Request.Method.GET,
+                AppConfig.URL_CREATENEWGAME + "/game/"+gameid, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Get Games Response: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+                    games = new ArrayList<>();
+                    // Check for error node in json
+                    if (!error) {
+                        JSONObject game = jObj.getJSONObject("game");
+
+                            String status = game.getString("status");
+                            if (status.equals("STARTED"))
+                            {
+                            db.setGameStatus("STARTED", gameid);
+                                db.setGameField(gameid,  game.getString("field"));
+                                timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+                                timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+                                Intent i = new Intent(getApplicationContext(),
+                                        GameActivity.class);
+                                startActivity(i);
+                                finish();
+                            }
+                    } else {
+                        // Error in login. Get the error message
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("status", "");
+                params.put("uiid", gameid);
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * Wait for second player
+     * */
+    private void setField() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_settingGameField";
+
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_FIELD, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Set Field: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        String field = jObj.getString("text");
+                        db.setGameField(gameid, field);
+                        setCells(field);
+                    } else {
+                        // Error in login. Get the error message
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", gameid);
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * Wait for second player
+     * */
+    private void setCells(final String fieldId) {
+        // Tag used to cancel the request
+        String tag_string_req = "req_settingGameCells";
+
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_FIELD, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Set Field: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        String cells = jObj.getString("text");
+                        db.addCells(cells);
+                    } else {
+                        // Error in login. Get the error message
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("fieldid", fieldId);
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 }

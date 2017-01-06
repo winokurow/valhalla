@@ -59,6 +59,15 @@ public class LoginActivity extends Activity {
         // Check if user is already logged in or not
         if (session.isLoggedIn()) {
             // User is already logged in. Take him to main activity
+            final HashMap<String, String> game = db.getGameDetails();
+            Log.d(TAG, Integer.toString(game.size()));
+            Log.d(TAG, game.get("status"));
+            if ((game.size()>0)&& (game.get("status").equals("STARTED")))
+            {
+                Intent intent = new Intent(LoginActivity.this, GameActivity.class);
+                startActivity(intent);
+                finish();
+            }
             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
             startActivity(intent);
             finish();

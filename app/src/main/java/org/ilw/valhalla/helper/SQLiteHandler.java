@@ -15,7 +15,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
 
     // All Static variables
     // Database Version
-    private static final int DATABASE_VERSION = 12;
+    private static final int DATABASE_VERSION = 14;
 
     // Database Name
     private static final String DATABASE_NAME = "android_api";
@@ -25,6 +25,9 @@ public class SQLiteHandler extends SQLiteOpenHelper {
 
     // Game table name
     private static final String TABLE_GAME = "game";
+
+    // Field table name
+    private static final String TABLE_FIELD = "game";
 
     // Login Table Columns names
     private static final String KEY_ID = "id";
@@ -44,7 +47,9 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     private static final String KEY_GAME_UID = "uid";
     private static final String KEY_GAME_CREATED_AT = "created_at";
     private static final String KEY_GAME_STATUS = "status";
-
+    private static final String KEY_GAME_FIELD = "field";
+    // Field Table Columns names
+    private static final String KEY_FIELD_CELLS = "cells";
     public SQLiteHandler(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
@@ -62,7 +67,11 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         String CREATE_GAME_TABLE = "CREATE TABLE " + TABLE_GAME + "("
                 + KEY_GAME_ID + " STRING PRIMARY KEY," + KEY_GAME_GAMER1ID + " TEXT,"+ KEY_GAME_GAMER1NAME + " TEXT,"+ KEY_GAME_GAMER1POINTS + " TEXT,"
                 + KEY_GAME_GAMER2ID + " TEXT,"+ KEY_GAME_GAMER2NAME + " TEXT,"+ KEY_GAME_GAMER2POINTS  + " TEXT," + KEY_GAME_UID + " TEXT,"
-                + KEY_GAME_CREATED_AT + " TEXT, " + KEY_GAME_STATUS + " INTEGER"+ ")";
+                + KEY_GAME_CREATED_AT + " TEXT, " + KEY_GAME_STATUS + " INTEGER, "+ KEY_GAME_FIELD + " TEXT"+ ")";
+        db.execSQL(CREATE_GAME_TABLE);
+
+        String CREATE_FIELD_TABLE = "CREATE TABLE " + TABLE_FIELD + "("
+                + KEY_FIELD_CELLS  + " TEXT" + ")";
         db.execSQL(CREATE_GAME_TABLE);
 
         Log.d(TAG, "Database tables created");
@@ -74,6 +83,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         // Drop older table if existed
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USER);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_GAME);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_FIELD);
         // Create tables again
         onCreate(db);
     }
@@ -157,7 +167,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
      * */
     public HashMap<String, String> getGameDetails() {
         HashMap<String, String> game = new HashMap<String, String>();
-        String selectQuery = "SELECT  * FROM " + TABLE_GAME;
+        String selectQuery = "SELECT * FROM " + TABLE_GAME;
 
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery(selectQuery, null);
@@ -171,8 +181,8 @@ public class SQLiteHandler extends SQLiteOpenHelper {
             game.put("gamer2id", cursor.getString(4));
             game.put("gamer2name", cursor.getString(5));
             game.put("gamer2points", cursor.getString(6));
-            game.put("created_at", cursor.getString(7));
-            game.put("status", cursor.getString(8));
+            game.put("created_at", cursor.getString(8));
+            game.put("status", cursor.getString(9));
         }
         cursor.close();
         db.close();
@@ -180,6 +190,34 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         Log.d(TAG, "Fetching game from Sqlite: " + game.toString());
 
         return game;
+    }
+
+    /**
+     * Delete game from DB
+     * */
+    public void setGameStatus(String status, String gameID) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues cv = new ContentValues();
+        cv.put("status",status);
+        db.update(TABLE_GAME, cv, KEY_GAME_ID+"='"+gameID + "'", null);
+        db.close();
+
+        Log.d(TAG, "Update game in sqlite");
+    }
+
+    /**
+     * Insert field id
+     * */
+    public void setGameField(String gameid, String fieldId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues cv = new ContentValues();
+        cv.put("fieldId",fieldId);
+        db.update(TABLE_GAME, cv, KEY_GAME_ID+"='"+gameid + "'", null);
+        db.close();
+
+        Log.d(TAG, "Update game in sqlite");
     }
 
     /**
@@ -206,4 +244,41 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         Log.d(TAG, "Deleted all user info from sqlite");
     }
 
+    /**
+     * Storing field cells in database
+     * */
+    public void addCells(String cells) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues values = new ContentValues();
+        values.put(KEY_FIELD_CELLS, cells);
+
+        // Inserting Row
+        long id = db.insert(TABLE_FIELD, null, values);
+        db.close(); // Closing database connection
+
+        Log.d(TAG, "New field inserted into sqlite: " + id);
+    }
+
+    /**
+     * Getting field cells from database
+     * */
+    public HashMap<String, String> getFieldCells() {
+        HashMap<String, String> cells = new HashMap<String, String>();
+        String selectQuery = "SELECT * FROM " + TABLE_FIELD;
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery(selectQuery, null);
+        // Move to first row
+        cursor.moveToFirst();
+        if (cursor.getCount() > 0) {
+            cells.put(KEY_FIELD_CELLS, cursor.getString(0));
+        }
+        cursor.close();
+        db.close();
+        // return game
+        Log.d(TAG, "Fetching game from Sqlite: " + cells.toString());
+
+        return cells;
+    }
 }
