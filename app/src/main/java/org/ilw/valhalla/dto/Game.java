@@ -1,19 +1,18 @@
 package org.ilw.valhalla.dto;
 
-/**
- * Created by Ilja.Winokurow on 02.01.2017.
- */
 public class Game {
 
     private String id;
     private String gamer1_id;
     private String gamer1_name;
-    private String gamer1_points;
+    private int gamer1_points;
     private String gamer2_id;
     private String gamer2_name;
-    private String gamer2_points;
+    private int gamer2_points;
     private String status;
+    private String field;
     private String created_at;
+    private String updated_at;
 
     public String getId() {
         return id;
@@ -59,11 +58,11 @@ public class Game {
         this.gamer1_name = gamer1_name;
     }
 
-    public String getGamer1_points() {
+    public int getGamer1_points() {
         return gamer1_points;
     }
 
-    public void setGamer1_points(String gamer1_points) {
+    public void setGamer1_points(int gamer1_points) {
         this.gamer1_points = gamer1_points;
     }
 
@@ -83,16 +82,32 @@ public class Game {
         this.gamer2_name = gamer2_name;
     }
 
-    public String getGamer2_points() {
+    public int getGamer2_points() {
         return gamer2_points;
     }
 
-    public void setGamer2_points(String gamer2_points) {
+    public void setGamer2_points(int gamer2_points) {
         this.gamer2_points = gamer2_points;
     }
 
-    public Game(String id, String gamer1_id, String gamer1_name, String gamer1_points, String gamer2_id,
-                String gamer2_name, String gamer2_points, String status, String created_at) {
+    public String getField() {
+        return field;
+    }
+
+    public void setField(String field) {
+        this.field = field;
+    }
+
+    public String getUpdated_at() {
+        return updated_at;
+    }
+
+    public void setUpdated_at(String updated_at) {
+        this.updated_at = updated_at;
+    }
+
+    public Game(String id, String gamer1_id, String gamer1_name, int gamer1_points, String gamer2_id,
+                String gamer2_name, int gamer2_points, String status, String field, String created_at, String updated_at) {
         super();
         this.id = id;
         this.gamer1_id = gamer1_id;
@@ -102,6 +117,9 @@ public class Game {
         this.gamer2_name = gamer2_name;
         this.gamer2_points = gamer2_points;
         this.status = status;
+        this.field = field;
         this.created_at = created_at;
+        this.updated_at = updated_at;
     }
+
 }

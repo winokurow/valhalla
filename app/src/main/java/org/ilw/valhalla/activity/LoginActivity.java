@@ -14,16 +14,23 @@ import com.android.volley.Request.Method;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import org.ilw.valhalla.R;
 import org.ilw.valhalla.app.AppConfig;
 import org.ilw.valhalla.app.AppController;
+import org.ilw.valhalla.dto.Game;
+import org.ilw.valhalla.dto.Gladiator;
+import org.ilw.valhalla.dto.Turn;
+import org.ilw.valhalla.dto.User;
 import org.ilw.valhalla.helper.SQLiteHandler;
 import org.ilw.valhalla.helper.SessionManager;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class LoginActivity extends Activity {
@@ -36,6 +43,14 @@ public class LoginActivity extends Activity {
     private SessionManager session;
     private SQLiteHandler db;
 
+    private User user;
+    private Game game;
+    private List<Gladiator> gladiators;
+    private List<Turn> turns;
+    private String cells;
+    private boolean isReady;
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,33 +60,6 @@ public class LoginActivity extends Activity {
         inputPassword = (EditText) findViewById(R.id.password);
         btnLogin = (Button) findViewById(R.id.btnLogin);
         btnLinkToRegister = (Button) findViewById(R.id.btnLinkToRegisterScreen);
-
-        // Progress dialog
-        pDialog = new ProgressDialog(this);
-        pDialog.setCancelable(false);
-
-        // SQLite database handler
-        db = new SQLiteHandler(getApplicationContext());
-
-        // Session manager
-        session = new SessionManager(getApplicationContext());
-
-        // Check if user is already logged in or not
-        if (session.isLoggedIn()) {
-            // User is already logged in. Take him to main activity
-            final HashMap<String, String> game = db.getGameDetails();
-            Log.d(TAG, Integer.toString(game.size()));
-            Log.d(TAG, game.get("status"));
-            if ((game.size()>0)&& (game.get("status").equals("STARTED")))
-            {
-                Intent intent = new Intent(LoginActivity.this, GameActivity.class);
-                startActivity(intent);
-                finish();
-            }
-            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-            startActivity(intent);
-            finish();
-        }
 
         // Login button Click Event
         btnLogin.setOnClickListener(new View.OnClickListener() {
@@ -105,11 +93,42 @@ public class LoginActivity extends Activity {
             }
         });
 
+        // Progress dialog
+        pDialog = new ProgressDialog(this);
+        pDialog.setCancelable(false);
+
+        // SQLite database handler
+        db = new SQLiteHandler(getApplicationContext());
+
+        // Session manager
+        session = new SessionManager(getApplicationContext());
+
+        // Check if user is already logged in or not
+        user = db.getUserDetails();
+        if (user == null)
+        {
+            session.setLogin(false);
+        }
+        if (session.isLoggedIn()) {
+            pDialog.setMessage("Starting ...");
+            pDialog.show();
+            // get current data
+            user = db.getUserDetails();
+
+
+            if (this.user == null)
+            {
+                session.setLogin(false);
+            } else {
+                getUser(user.getId());
+            }
+        }
+
     }
 
     /**
      * function to verify login details in mysql db
-     * */
+     */
     private void checkLogin(final String email, final String password) {
         // Tag used to cancel the request
         String tag_string_req = "req_login";
@@ -118,7 +137,7 @@ public class LoginActivity extends Activity {
         showDialog();
 
         StringRequest strReq = new StringRequest(Method.POST,
-                AppConfig.URL_LOGIN, new Response.Listener<String>() {
+                AppConfig.URL_USER, new Response.Listener<String>() {
 
             @Override
             public void onResponse(String response) {
@@ -136,17 +155,13 @@ public class LoginActivity extends Activity {
                         session.setLogin(true);
 
                         // Now store the user in SQLite
-                        JSONObject user = jObj.getJSONObject("user");
-                        String name = user.getString("name");
-                        String email = user.getString("email");
-                        String created_at = user
-                                .getString("created_at");
-                        String uid = user
-                                .getString("id");
-                        int points = user.getInt("points");
+                        JSONObject userReq = jObj.getJSONObject("data");
+                        Gson gson = new GsonBuilder().create();
+                        User user = gson.fromJson(userReq.toString(), User.class);
 
                         // Inserting row in users table
-                        db.addUser(name, email, uid, created_at, points);
+                        Log.d(TAG, "email" + email);
+                        db.addUser(user);
 
                         // Launch main activity
                         Intent intent = new Intent(LoginActivity.this,
@@ -167,13 +182,13 @@ public class LoginActivity extends Activity {
 
             }
         }, new Response.ErrorListener() {
-
             @Override
             public void onErrorResponse(VolleyError error) {
                 Log.e(TAG, "Login Error: " + error.getMessage());
                 Toast.makeText(getApplicationContext(),
                         error.getMessage(), Toast.LENGTH_LONG).show();
                 hideDialog();
+                isReady = true;
             }
         }) {
 
@@ -202,4 +217,146 @@ public class LoginActivity extends Activity {
         if (pDialog.isShowing())
             pDialog.dismiss();
     }
+
+    public void getUser(final String uuid) {
+        isReady = false;
+        // Tag used to cancel the request
+        String tag_string_req = "get_User";
+        String uri = AppConfig.URL_USER + "/uuid/" + uuid;
+
+        StringRequest strReq = new StringRequest(Method.GET,
+                uri, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                User returnValue = null;
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        // Now store the user in SQLite
+                        JSONObject userReq = jObj.getJSONObject("data");
+                        Gson gson = new GsonBuilder().create();
+                        returnValue = gson.fromJson(userReq.toString(), User.class);
+                        db.deleteUsers();
+
+                        db.addUser(user);
+                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        startActivity(intent);
+                        finish();
+
+                        /*if ((game==null) || game.getStatus().equals("WAITING"))
+                        {
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } else {
+                            db.addGame(game);
+                            this.getGladiators(game.getGamer1_id());
+                            while (!(isReady))
+                            {
+                                Utils.sleep(100);
+                            }
+                            db.addGladiator(gladiators);
+                            this.getGladiators(game.getGamer2_id());
+                            while (!(isReady))
+                            {
+                                Utils.sleep(100);
+                            }
+                            db.addGladiator(gladiators);
+                            this.getFields(game.getField());
+                            while (!(isReady))
+                            {
+                                Utils.sleep(100);
+                            }
+                            db.addCells(cells);
+
+                            switch (game.getStatus()) {
+                                case "PREPARED":
+                                    Intent intent = new Intent(LoginActivity.this, PrepareActivity.class);
+                                    startActivity(intent);
+                                    finish();
+                                    break;
+                                case "STARTED":
+                                    this.getTurns(game.getId(), "-1");
+                                    while (!(isReady))
+                                    {
+                                        Utils.sleep(100);
+                                    }
+                                    db.addTurns(turns);
+                                    intent = new Intent(LoginActivity.this, GameActivity.class);
+                                    startActivity(intent);
+                                    finish();
+                                    break;
+                            }*/
+                    }
+                    hideDialog();
+                } catch (JSONException e) {
+                    Log.d(TAG, e.getMessage());
+                }
+                user = returnValue;
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+/*
+    public void getGame(final String uuid) {
+        isReady = false;
+        // Tag used to cancel the request
+        String tag_string_req = "get_Game";
+        String uri = AppConfig.URL_CREATENEWGAME + "/userid/" + uuid;
+
+        StringRequest strReq = new StringRequest(Method.GET,
+                uri, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Game returnValue = null;
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        JSONObject userReq = jObj.getJSONObject("data");
+                        Gson gson = new GsonBuilder().create();
+                        returnValue = gson.fromJson(userReq.toString(), Game.class);
+                    }
+                } catch (JSONException e) {
+                    Log.d(TAG, e.getMessage());
+                }
+                game = returnValue;
+                isReady = true;
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+                isReady = true;
+            }
+        }) {
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }*/
+
+
 }

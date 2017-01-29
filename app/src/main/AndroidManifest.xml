@@ -33,7 +33,10 @@
             android:name=".activity.GameActivity"
             android:label="string"
             android:launchMode="singleTop" />
-
+        <activity
+            android:name=".activity.PrepareActivity"
+            android:label="string"
+            android:launchMode="singleTop" />
     </application>
 
 </manifest>
