@@ -28,6 +28,6 @@ public class GameActivity extends Activity {
         db = new SQLiteHandler(getApplicationContext());
         String cells = db.getFieldCells().get("cells");
         Log.d(TAG, "Cells" + cells);
-        view.setCells(cells);
+        //view.setCells(cells);
     }
 }

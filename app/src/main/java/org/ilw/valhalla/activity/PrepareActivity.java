@@ -2,6 +2,8 @@ package org.ilw.valhalla.activity;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -20,9 +22,11 @@ import org.ilw.valhalla.app.AppController;
 import org.ilw.valhalla.dto.Game;
 import org.ilw.valhalla.dto.Gladiator;
 import org.ilw.valhalla.dto.User;
+import org.ilw.valhalla.dto.Point;
 import org.ilw.valhalla.helper.SQLiteHandler;
 import org.ilw.valhalla.helper.SessionManager;
 import org.ilw.valhalla.views.GameView;
+import org.ilw.valhalla.views.GladiatorsView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,16 +48,31 @@ public class PrepareActivity extends Activity {
     protected Game game;
     protected User user;
     protected String fields;
+
     protected List<Gladiator> gladiators;
+    protected List<Gladiator> gladiatorsWait;
+
+    protected Map<Point, Gladiator> gladiatorsSet = new HashMap<>();
+    protected boolean isFirstPlayer;
+    protected GameView view;
+
+    protected GladiatorsView view2;
+    protected int active = -1;
+
+
+
+    private HashMap<String, Bitmap> mStore = new HashMap<String, Bitmap>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "BLYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         // Progress dialog
         pDialog = new ProgressDialog(this);
         pDialog.setCancelable(false);
         // SqLite database handler
+        Bitmap bmp = BitmapFactory.decodeResource(getResources(),
+                R.drawable.man);
+        mStore.put("glad1", bmp);
         db = new SQLiteHandler(getApplicationContext());
         user = db.getUserDetails();
         getGame(user.getId());
@@ -85,11 +104,10 @@ public class PrepareActivity extends Activity {
                             Gson gson = new GsonBuilder().create();
                             returnValue = gson.fromJson(userReq.toString(), Game.class);
                             game = returnValue;
-                            Log.d(TAG, game.getId());
                             db.deleteGame();
-                            Log.d(TAG, "here-1");
                             db.addGame(game);
-                            Log.d(TAG, "here1");
+                            isFirstPlayer = (user.getId().equals(game.getGamer1_id())) ? true : false;
+
                             getGladiators1(game.getGamer1_id());
                         }
                     }
@@ -139,6 +157,11 @@ public class PrepareActivity extends Activity {
                         returnValue = gson.fromJson(obj.toString(), new TypeToken<ArrayList<Gladiator>>() {}.getType());
                         db.deleteGladiators();
                         db.addGladiator(returnValue);
+                        if (isFirstPlayer)
+                        {
+                            gladiators = returnValue;
+                            gladiatorsWait = returnValue;
+                        }
                         getGladiators2(game.getGamer2_id());
                     }
                 } catch (JSONException e) {
@@ -185,6 +208,11 @@ public class PrepareActivity extends Activity {
                         Gson gson = new GsonBuilder().create();
                         returnValue = gson.fromJson(userReq.toString(), new TypeToken<ArrayList<Gladiator>>() {}.getType());
                         db.addGladiator(returnValue);
+                        if (!isFirstPlayer)
+                        {
+                            gladiators = returnValue;
+                            gladiatorsWait = returnValue;
+                        }
                         getFields(game.getField());
                     }
                 } catch (JSONException e) {
@@ -273,13 +301,23 @@ public class PrepareActivity extends Activity {
                         db.deleteCells();
                         db.addCells(returnValue);
                         fields = returnValue;
-                        setContentView(R.layout.activity_game);
-                        GameView view = (GameView) findViewById(R.id.game_view);
+                        setContentView(R.layout.activity_prepare);
+                        view = (GameView) findViewById(R.id.game_view);
 
+                        if (!(isFirstPlayer))
+                        {
+                            fields = fields.replaceAll("098", "100");
+                        } else
+                        {
+                            fields = fields.replaceAll("099", "100");
+                        }
+                        int[][] preparedCells = getIntFields();
+                        // Add new Game
 
-                        String cells = db.getFieldCells().get("cells");
-                        Log.d(TAG, "Cells" + cells);
-                        view.setCells(cells);
+                        view.setCells(preparedCells);
+                        view2 = (GladiatorsView) findViewById(R.id.gladiators_view);
+                        //view2.setGladiators(gladiators);
+
                         hideDialog();
                     }
                 } catch (JSONException e) {
@@ -313,5 +351,76 @@ public class PrepareActivity extends Activity {
     private void hideDialog() {
         if (pDialog.isShowing())
             pDialog.dismiss();
+    }
+
+    private int[][] getIntFields() {
+        int[][] returnValue = null;
+        if (!(fields.isEmpty())) {
+            String rows[] = fields.split(";");
+            int rowLength = rows[0].split(",").length;
+            returnValue = new int[rows.length][rowLength];
+            if (isFirstPlayer) {
+                for (int i = 0; i < rows.length; i++) {
+                    for (int j = 0; j < rowLength; j++) {
+                        returnValue[i][j] = Integer.parseInt(rows[i].split(",")[j]);
+                    }
+                }
+            } else {
+                for (int i = 0; i < rows.length; i++) {
+                    for (int j = 0; j < rowLength; j++) {
+                        returnValue[rows.length-i-1][rowLength-j-1] = Integer.parseInt(rows[i].split(",")[j]);
+                    }
+                }
+            }
+        }
+        return returnValue;
+    }
+
+    public int getActive() {
+        return active;
+    }
+
+    public void setActive(int active) {
+        this.active = active;
+    }
+
+    public HashMap<String, Bitmap> getmStore() {
+        return mStore;
+    }
+
+    public void setmStore(HashMap<String, Bitmap> mStore) {
+        this.mStore = mStore;
+    }
+
+    public List<Gladiator> getGladiators() {
+        return gladiators;
+    }
+
+    public void setGladiators(List<Gladiator> gladiators) {
+        this.gladiators = gladiators;
+    }
+
+    public List<Gladiator> getGladiatorsWait() {
+        return gladiatorsWait;
+    }
+
+    public void setGladiatorsWait(List<Gladiator> gladiatorsWait) {
+        this.gladiatorsWait = gladiatorsWait;
+    }
+
+    public GladiatorsView getView2() {
+        return view2;
+    }
+
+    public void setView2(GladiatorsView view2) {
+        this.view2 = view2;
+    }
+
+    public Map<Point, Gladiator> getGladiatorsSet() {
+        return gladiatorsSet;
+    }
+
+    public void setGladiatorsSet(Map<Point, Gladiator> gladiatorsSet) {
+        this.gladiatorsSet = gladiatorsSet;
     }
 }

@@ -67,6 +67,10 @@ public class MainActivity extends Activity {
     private User user = null;
     private boolean isReady;
     private boolean isShown;
+
+
+    private int active;
+
     final Handler timerHandler = new Handler();
     Runnable timerRefreshGamesRunnable = new Runnable() {
         @Override
@@ -806,4 +810,7 @@ public class MainActivity extends Activity {
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
+
+
+
 }
