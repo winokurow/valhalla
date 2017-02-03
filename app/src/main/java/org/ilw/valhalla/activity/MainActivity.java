@@ -164,10 +164,9 @@ public class MainActivity extends Activity {
      * preferences Clears the user data from sqlite users table
      * */
     private void logoutUser() {
-        Log.d(TAG, "here");
         timerHandler.removeCallbacks(timerRefreshGamesRunnable);
         timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
-        Log.d(TAG, "there");
+
         session.setLogin(false);
 
         db.deleteUsers();
@@ -773,6 +772,11 @@ public class MainActivity extends Activity {
                                     break;
                                 case "PREPARED":
                                     Intent intent = new Intent(MainActivity.this, PrepareActivity.class);
+                                    startActivity(intent);
+                                    finish();
+                                    break;
+                                case "PREPARED_WAITING":
+                                    intent = new Intent(MainActivity.this, PrepareActivity.class);
                                     startActivity(intent);
                                     finish();
                                     break;

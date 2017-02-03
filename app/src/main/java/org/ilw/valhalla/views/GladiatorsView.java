@@ -14,8 +14,10 @@ import android.view.View;
 
 import org.ilw.valhalla.activity.PrepareActivity;
 import org.ilw.valhalla.dto.Gladiator;
+import org.ilw.valhalla.dto.Point;
 
 import java.util.List;
+import java.util.Map;
 
 public class GladiatorsView extends View {
 
@@ -39,6 +41,7 @@ public class GladiatorsView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+
         int active = ((PrepareActivity)getContext()).getActive();
         List<Gladiator> gladiators = ((PrepareActivity)getContext()).getGladiatorsWait();
         paint = new Paint();
@@ -48,10 +51,18 @@ public class GladiatorsView extends View {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(Color.WHITE);
         mCanvas.drawRect(0f, canvasY2Size, canvasSize, canvasSize, paint);
-        Log.d("Tag", new Integer(gladiators.size()).toString());
+        Log.d("Tag", "count" + new Integer(gladiators.size()).toString());
+        Log.d("Tag", "count" + ((PrepareActivity)getContext()).getGladiators().size());
+        int count = gladiators.size();
+        if ((gladiators.size()<5) && (gladiators.size()<((PrepareActivity)getContext()).getGladiators().size()))
+        {
+            count++;
+        }
+        Log.d("Tag", (new Integer(count)).toString());
         for (int i=0;i<5;i++)
         {
-            if ((i<gladiators.size()) || ((gladiators.isEmpty()) && (i==0))) {
+            if (i<count)
+                    {
                 if (i != active) {
                     drawRect(i * canvasSize / 5, canvasY1Size, (i + 1) * canvasSize / 5, canvasY2Size, paint, Color.WHITE);
                 } else {
@@ -130,9 +141,30 @@ public class GladiatorsView extends View {
         if(event.getAction() == MotionEvent.ACTION_UP){
             int order = (int) (event.getX() / (canvasSize/5));
             List<Gladiator> gladiators = ((PrepareActivity)getContext()).getGladiators();
-            if ((order>-1 && (order<gladiators.size())))
+            int count = gladiators.size();
+            if ((gladiators.size()<5) && (gladiators.size()<((PrepareActivity)getContext()).getGladiators().size()))
             {
-                ((PrepareActivity) getContext()).setActive(order);
+                count++;
+            }
+            if ((order>-1) && (order<count))
+            {
+                if (((PrepareActivity) getContext()).getActive() != -1)
+                {
+                    ((PrepareActivity) getContext()).setActive(-1);
+                } else {
+                    Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
+                    if (activePoint == null) {
+                        ((PrepareActivity) getContext()).setActive(order);
+                    } else {
+                        Map<Point, Gladiator> gladiatorsSet = ((PrepareActivity)getContext()).getGladiatorsSet();
+
+                        ((PrepareActivity) getContext()).getGladiatorsWait().add(gladiatorsSet.get(activePoint));
+                        gladiatorsSet.remove(activePoint);
+                        ((PrepareActivity)getContext()).setActivePoint(null);
+                        ((PrepareActivity)getContext()).getView().drawField();
+                        ((PrepareActivity)getContext()).getView().invalidate();
+                    }
+                }
                 this.invalidate();
             }
             return performClick();

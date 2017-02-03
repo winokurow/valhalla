@@ -2,14 +2,52 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/bottomLayout"
+        android:layout_below="@+id/gladiators_view"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_gravity="center">
+
+        <Button
+            android:id="@+id/btnStartGame"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dip"
+            android:layout_margin="10dp"
+            android:background="@color/btn_logut_bg"
+            android:text="@string/btn_startGame"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="15dp" />
+        <Button
+            android:id="@+id/btnCancelGame"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dip"
+            android:layout_margin="10dp"
+            android:background="@color/btn_logut_bg"
+            android:text="@string/btn_cancelGame"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="15dp" />
+    </LinearLayout>
+    
     <org.ilw.valhalla.views.GameView android:layout_width="300dp"
         android:layout_height="300dp"
         android:id="@+id/game_view"
         android:layout_gravity="center"
         android:clickable="true"
         android:background="#000" />
+
     <org.ilw.valhalla.views.GladiatorsView android:layout_width="300dp"
-        android:layout_height="300dp"
+        android:layout_height="200dp"
         android:layout_below="@+id/game_view"
         android:id="@+id/gladiators_view"
         android:layout_gravity="center"

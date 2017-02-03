@@ -2,7 +2,8 @@ package org.ilw.valhalla.data;
 
 public enum GameStatus {
     WAITING("WAITING"),
-    PREPARE("PREPARE"),
+    PREPARE("PREPARED"),
+    PREPARE_WAITING("PREPARED_WAITING"),
     STARTED("STARTED"),
     ENDED("ENDED");
     private final String value;

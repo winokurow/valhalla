@@ -246,6 +246,22 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     }
 
     /**
+     * Delete game from DB
+     * */
+    public void setUserPoints(String id, String points, String level) {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        ContentValues cv = new ContentValues();
+        cv.put("points",points);
+        cv.put("level",level);
+        db.update(TABLE_USER, cv, KEY_USER_UID+"='"+id + "'", null);
+        db.close();
+
+        Log.d(TAG, "Update game in sqlite");
+    }
+
+
+    /**
      * Getting game data from database
      * */
     public Game getGameDetails() {

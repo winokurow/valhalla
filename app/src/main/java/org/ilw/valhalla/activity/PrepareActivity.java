@@ -2,12 +2,17 @@ package org.ilw.valhalla.activity;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
+import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -19,10 +24,11 @@ import com.google.gson.reflect.TypeToken;
 import org.ilw.valhalla.R;
 import org.ilw.valhalla.app.AppConfig;
 import org.ilw.valhalla.app.AppController;
+import org.ilw.valhalla.data.GameStatus;
 import org.ilw.valhalla.dto.Game;
 import org.ilw.valhalla.dto.Gladiator;
-import org.ilw.valhalla.dto.User;
 import org.ilw.valhalla.dto.Point;
+import org.ilw.valhalla.dto.User;
 import org.ilw.valhalla.helper.SQLiteHandler;
 import org.ilw.valhalla.helper.SessionManager;
 import org.ilw.valhalla.views.GameView;
@@ -33,6 +39,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +47,9 @@ import java.util.Map;
  * Created by Ilja.Winokurow on 05.01.2017.
  */
 public class PrepareActivity extends Activity {
+    private Button btnStartGame;
+    private Button btnCancelGame;
+
     private SQLiteHandler db;
     private SessionManager session;
     private ProgressDialog pDialog;
@@ -51,20 +61,34 @@ public class PrepareActivity extends Activity {
 
     protected List<Gladiator> gladiators;
     protected List<Gladiator> gladiatorsWait;
-
     protected Map<Point, Gladiator> gladiatorsSet = new HashMap<>();
+
     protected boolean isFirstPlayer;
+
     protected GameView view;
 
     protected GladiatorsView view2;
     protected int active = -1;
 
-
+    protected Point activePoint;
+    protected boolean isPrepared;
 
     private HashMap<String, Bitmap> mStore = new HashMap<String, Bitmap>();
 
+    final Handler timerHandler = new Handler();
+    Runnable timerWaitForPlayerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            waitForPlayer();
+            timerHandler.postDelayed(this, 10000);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+
         super.onCreate(savedInstanceState);
         // Progress dialog
         pDialog = new ProgressDialog(this);
@@ -75,6 +99,14 @@ public class PrepareActivity extends Activity {
         mStore.put("glad1", bmp);
         db = new SQLiteHandler(getApplicationContext());
         user = db.getUserDetails();
+        game = db.getGameDetails();
+        isPrepared = false;
+        if (game.getStatus().equals("PREPARED_WAITING"))
+        {
+            isPrepared = true;
+        }
+        Log.d("ddf", game.getStatus());
+        Log.d("ddf", new Boolean(isPrepared).toString());
         getGame(user.getId());
 
     }
@@ -96,7 +128,6 @@ public class PrepareActivity extends Activity {
                     boolean error = jObj.getBoolean("error");
 
                     // Check for error node in json
-                    Log.d(TAG, "here-2");
                     if (!error) {
                         if (!(jObj.isNull("data")))
                         {
@@ -145,14 +176,11 @@ public class PrepareActivity extends Activity {
                 Log.d(TAG, response);
                 List<Gladiator> returnValue = null;
                 try {
-                    Log.d(TAG, "here");
                     JSONObject jObj = new JSONObject(response);
-                    Log.d(TAG, "there");
                     boolean error = jObj.getBoolean("error");
                     // Check for error node in json
                     if (!error) {
                         JSONArray obj = jObj.getJSONArray("data");
-                        Log.d(TAG, new Integer (obj.length()).toString());
                         Gson gson = new GsonBuilder().create();
                         returnValue = gson.fromJson(obj.toString(), new TypeToken<ArrayList<Gladiator>>() {}.getType());
                         db.deleteGladiators();
@@ -160,7 +188,8 @@ public class PrepareActivity extends Activity {
                         if (isFirstPlayer)
                         {
                             gladiators = returnValue;
-                            gladiatorsWait = returnValue;
+                            Log.d(TAG, gladiators.toString());
+                            gladiatorsWait = cloneList(returnValue);
                         }
                         getGladiators2(game.getGamer2_id());
                     }
@@ -211,7 +240,8 @@ public class PrepareActivity extends Activity {
                         if (!isFirstPlayer)
                         {
                             gladiators = returnValue;
-                            gladiatorsWait = returnValue;
+                            Log.d(TAG, gladiators.toString());
+                            gladiatorsWait = cloneList(returnValue);
                         }
                         getFields(game.getField());
                     }
@@ -316,9 +346,45 @@ public class PrepareActivity extends Activity {
 
                         view.setCells(preparedCells);
                         view2 = (GladiatorsView) findViewById(R.id.gladiators_view);
-                        //view2.setGladiators(gladiators);
+                        if (isPrepared)
+                        {
+                            hideDialog();
+                            pDialog.setMessage("Waiting for second player ...");
+                            showDialog();
+                            timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+                        } else {
+                            btnCancelGame = (Button) findViewById(R.id.btnCancelGame);
+                            btnStartGame = (Button) findViewById(R.id.btnStartGame);
+                            // Cancel Game
+                            if (user.getPoints() > 5) {
+                                btnCancelGame.setOnClickListener(new View.OnClickListener() {
 
-                        hideDialog();
+                                    public void onClick(View view) {
+                                        cancelGame();
+                                    }
+                                });
+                            } else {
+                                btnCancelGame.setEnabled(false);
+                                btnCancelGame.setAlpha(.5f);
+                                btnCancelGame.setClickable(false);
+                            }
+
+                            btnStartGame.setOnClickListener(new View.OnClickListener() {
+
+                                public void onClick(View view) {
+                                    if (gladiatorsSet.size() == 0) {
+                                        Toast.makeText(getApplicationContext(),
+                                                "Please set the gladiators on field.", Toast.LENGTH_LONG).show();
+                                    } else {
+
+                                        getGameStatus();
+                                    }
+                                }
+                            });
+                            //view2.setGladiators(gladiators);
+
+                            hideDialog();
+                        }
                     }
                 } catch (JSONException e) {
                     Log.d(TAG, e.getMessage());
@@ -422,5 +488,580 @@ public class PrepareActivity extends Activity {
 
     public void setGladiatorsSet(Map<Point, Gladiator> gladiatorsSet) {
         this.gladiatorsSet = gladiatorsSet;
+    }
+
+    public Point getActivePoint() {
+        return activePoint;
+    }
+
+    public void setActivePoint(Point activePoint) {
+        this.activePoint = activePoint;
+    }
+
+    public static List<Gladiator> cloneList(List<Gladiator> list) {
+        List<Gladiator> clone = new ArrayList<Gladiator>(list.size());
+        for (Gladiator item : list) clone.add(item);
+        return clone;
+    }
+
+    public GameView getView() {
+        return view;
+    }
+
+    public void setView(GameView view) {
+        this.view = view;
+    }
+
+    /**
+     * function to cancel a game
+     * */
+    private void cancelGame() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_gameGame";
+
+        pDialog.setMessage("Canceling the Game ...");
+        showDialog();
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Cancel Game Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        db.setGameStatus(GameStatus.ENDED.asString(), game.getId());
+                        setUserPoints();
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", game.getId());
+                params.put("status", "ENDED");
+                params.put("userid", game.getGamer2_id());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+    private void showDialog() {
+        if (!pDialog.isShowing())
+            pDialog.show();
+    }
+
+    /**
+     * function to start game
+     * */
+    private void setUserPoints() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_setPoints";
+
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_USER, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Set Points Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        db.setUserPoints(user.getId(), new Integer(user.getPoints()-5).toString(), new Integer(user.getLevel()).toString());
+                        Intent intent = new Intent(PrepareActivity.this, MainActivity.class);
+                        startActivity(intent);
+                        finish();
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", user.getId());
+                params.put("points", new Integer(user.getPoints()-5).toString());
+                params.put("level", new Integer(user.getLevel()).toString());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * Wait for second player
+     * */
+    private void waitForPlayer() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_getGame";
+        StringRequest strReq = new StringRequest(Request.Method.GET,
+                AppConfig.URL_CREATENEWGAME + "/game/"+game.getId(), new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Get Status: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+                    // Check for error node in json
+                    if (!error) {
+                        JSONObject gameObj = jObj.getJSONObject("data");
+
+                        String status = gameObj.getString("status");
+
+                        if (status.equals(GameStatus.ENDED.asString())) {
+                            timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+                            Toast.makeText(getApplicationContext(),
+                                    "Second user has canceled the game.", Toast.LENGTH_LONG).show();
+                            db.deleteGame();
+                            Intent intent = new Intent(PrepareActivity.this, MainActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                        if (status.equals(GameStatus.STARTED.asString())) {
+                            timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+                            db.setGameStatus(GameStatus.STARTED.asString(), game.getId());
+                            Intent intent = new Intent(PrepareActivity.this, GameActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<String, String>();
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * function to start game
+     * */
+    private void startGameReq() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_startGame";
+
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Start Game Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        db.setGameStatus(GameStatus.STARTED.asString(), game.getId());
+                        addTurn2();
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", game.getId());
+                params.put("status", "STARTED");
+                params.put("userid", game.getGamer2_id());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * Read status
+     * */
+    private void getGameStatus() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_getGameStatus";
+        StringRequest strReq = new StringRequest(Request.Method.GET,
+                AppConfig.URL_CREATENEWGAME + "/game/"+game.getId(), new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Get Status: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+                    // Check for error node in json
+                    if (!error) {
+                        JSONObject gameObj = jObj.getJSONObject("data");
+                        String status = gameObj.getString("status");
+                        if (status.equals("PREPARED_WAITING"))
+                        {
+                            startGameReq();
+                        }
+                        else {
+                            setStatusPrepareWaiting();
+                        }
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("gameid", game.getId());
+                params.put("host", "ENDED");
+                params.put("userid", game.getGamer2_id());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * function to start game
+     * */
+    private void setStatusPrepareWaiting() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_startGame";
+
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Start Game Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        db.setGameStatus(GameStatus.PREPARE_WAITING.asString(), game.getId());
+                        pDialog.setMessage("Waiting for second player ...");
+                        showDialog();
+                        addTurn1();
+
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", game.getId());
+                params.put("status", "PREPARED_WAITING");
+                params.put("userid", game.getGamer2_id());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * function to add turn
+     * */
+    private void addTurn1() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_addTurn1";
+
+        StringRequest strReq = new StringRequest(Method.POST,
+                AppConfig.URL_TURNS, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Add Turn Response: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("gameid", game.getId());
+                if (isFirstPlayer)
+                {
+                    params.put("host", "1");
+                } else {
+                    params.put("host", "2");
+                }
+                params.put("turn", "-11");
+                params.put("action", "set");
+                String glad = "";
+                Iterator it = gladiatorsSet.entrySet().iterator();
+                while (it.hasNext()) {
+
+                    Map.Entry pair = (Map.Entry)it.next();
+                    glad = String.format("%s:%s:%s;",((Point)pair.getKey()).getX(), ((Point)pair.getKey()).getY(), ((Gladiator)pair.getValue()).getId());
+
+                    it.remove(); // avoids a ConcurrentModificationException
+                }
+                Log.d("HAHA", glad);
+                params.put("value1", glad);
+                    return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * function to add turn
+     * */
+    private void addTurn2() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_addTurn2";
+
+        StringRequest strReq = new StringRequest(Method.POST,
+                AppConfig.URL_TURNS, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Add Turn Response: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        Intent intent = new Intent(PrepareActivity.this, GameActivity.class);
+                        startActivity(intent);
+                        finish();
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("gameid", game.getId());
+                if (isFirstPlayer)
+                {
+                    params.put("host", "1");
+                } else {
+                    params.put("host", "2");
+                }
+                params.put("turn", "-10");
+                params.put("action", "set");
+                String glad = "";
+                Iterator it = gladiatorsSet.entrySet().iterator();
+                while (it.hasNext()) {
+
+                    Map.Entry pair = (Map.Entry)it.next();
+                    glad = String.format("%s:%s:%s;",((Point)pair.getKey()).getX(), ((Point)pair.getKey()).getY(), ((Gladiator)pair.getValue()).getId());
+
+                    it.remove(); // avoids a ConcurrentModificationException
+                }
+                params.put("value1", glad);
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 }

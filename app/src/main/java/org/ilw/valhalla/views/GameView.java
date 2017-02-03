@@ -68,6 +68,7 @@ public class GameView extends View {
 
     public void drawField()
     {
+
         if (cells != null) {
             paint = new Paint();
             paint.setAntiAlias(true);
@@ -85,6 +86,7 @@ public class GameView extends View {
                     float x2 = ((j / 2) + 1) * canvasSize / xLength;
                     float y1 = (i / 2) * canvasSize / yLength;
                     float y2 = ((i / 2) + 1) * canvasSize / yLength;
+
                     switch (cells[i][j]) {
                         case 100:
                             paint.setStyle(Paint.Style.FILL);
@@ -114,6 +116,19 @@ public class GameView extends View {
                     }
                 }
             }
+            Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
+            Log.d("TAG", new Boolean(activePoint==null).toString());
+            if (activePoint!=null)
+            {
+                float x1 = activePoint.getX() * canvasSize / xLength;
+                float x2 = (activePoint.getX()+1) * canvasSize / xLength;
+                float y1 = activePoint.getY() * canvasSize / yLength;
+                float y2 = (activePoint.getY()+1) * canvasSize / yLength;
+                Log.d("TAG", new Float(x1).toString() +  " " + new Float(x2).toString() + new Float(y1).toString() +  " " + new Float(y2).toString());
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(Color.YELLOW);
+                mCanvas.drawRect(x1, y1, x2, y2, paint);
+            }
             Map<Point, Gladiator> gladiators = ((PrepareActivity) getContext()).getGladiatorsSet();
             if (gladiators.size() > 0) {
                 Iterator it = gladiators.entrySet().iterator();
@@ -121,7 +136,7 @@ public class GameView extends View {
                     Map.Entry pair = (Map.Entry) it.next();
                     Point point = (Point) pair.getKey();
                     //System.out.println(pair.getKey() + " = " + pair.getValue());
-                    it.remove(); // avoids a ConcurrentModificationException
+                    //it.remove(); // avoids a ConcurrentModificationException
                     //считаем координаты центра ячейки
 
                     float x0 = ((viewSize / (10 * xLength)) + (viewSize / xLength) * point.getX());
@@ -219,15 +234,52 @@ public class GameView extends View {
                 int x = (int)(xLength *eventX/viewSize);
                 int y = (int)(yLength *eventY/viewSize);
                 int active = ((PrepareActivity)getContext()).getActive();
+                Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
                 Map<Point, Gladiator> gladiatorsSet = ((PrepareActivity)getContext()).getGladiatorsSet();
-                if ((active>-1) && ((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y)))))
+
+                if ((active>-1))
                 {
+                    if (((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y)))))
+                    {
+                    //Log.d("TAG", gladiatorsSet.toString());
                     gladiatorsSet.put(new Point(x,y), gladiators.get(active));
+                    ((PrepareActivity)getContext()).setGladiatorsSet(gladiatorsSet);
+
                     drawField();
                     invalidate();
                     gladiators.remove(active);
                     ((PrepareActivity)getContext()).getView2().invalidate();
                     ((PrepareActivity)getContext()).setActive(-1);
+                    }
+                }
+
+                else if (activePoint!=null){
+                    if (activePoint.equals(new  Point(x, y)))
+                    {
+                        ((PrepareActivity)getContext()).setActivePoint(null);
+                    } else
+                    {
+                        if (((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y))))) {
+                            //Log.d("TAG", gladiatorsSet.toString());
+                            gladiatorsSet.put(new Point(x, y), gladiatorsSet.get(activePoint));
+                            gladiatorsSet.remove(activePoint);
+                            ((PrepareActivity) getContext()).setGladiatorsSet(gladiatorsSet);
+                            ((PrepareActivity)getContext()).setActivePoint(null);
+                            ((PrepareActivity) getContext()).getView2().invalidate();
+                        }
+                    }
+                    drawField();
+                    invalidate();
+                } else {
+                    if (((gladiatorsSet.containsKey(new Point(x, y)))))
+                    {
+                        Point point = new Point(x,y);
+                        activePoint = point;
+                        Log.d("TAG", new Integer (activePoint.getX()).toString());
+                        ((PrepareActivity)getContext()).setActivePoint(activePoint);
+                        drawField();
+                        invalidate();
+                    }
                 }
                 return true;
             }
