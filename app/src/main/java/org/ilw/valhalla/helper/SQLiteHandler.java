@@ -22,7 +22,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
 
     // All Static variables
     // Database Version
-    private static final int DATABASE_VERSION = 49;
+    private static final int DATABASE_VERSION = 54;
 
     // Database Name
     private static final String DATABASE_NAME = "android_api";
@@ -303,7 +303,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
      * Getting gladiators from database
      * */
     public List<Gladiator> getGladiatorsDetails() {
-        String selectQuery = "SELECT * FROM " + TABLE_GAME;
+        String selectQuery = "SELECT * FROM " + TABLE_GLADIATORS;
 
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.rawQuery(selectQuery, null);

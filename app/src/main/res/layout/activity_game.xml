@@ -4,9 +4,28 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:custom="http://schemas.android.com/apk/res-auto">
-    <org.ilw.valhalla.views.GameView android:layout_width="300dp"
+    <org.ilw.valhalla.views.GameView
+        android:layout_width="300dp"
     android:layout_height="300dp"
     android:id="@+id/game_view"
     android:layout_gravity="center"
     android:background="#000" />
+    <org.ilw.valhalla.views.QueueView android:layout_width="300dp"
+        android:layout_height="100dp"
+        android:layout_below="@+id/game_view"
+        android:id="@+id/queue_view"
+        android:layout_gravity="center"
+        android:background="#000" />
+    <TextView
+        android:id="@+id/text_id"
+        android:layout_width="300dp"
+        android:layout_height="200dp"
+        android:textColor="@android:color/holo_blue_dark"
+        android:textColorHighlight="@android:color/primary_text_dark"
+        android:layout_centerVertical="true"
+        android:layout_below="@+id/queue_view"
+        android:maxLines="14"
+        android:lines="14"
+        android:layout_marginLeft="8dp"
+        android:textSize="15dp"/>
 </RelativeLayout>

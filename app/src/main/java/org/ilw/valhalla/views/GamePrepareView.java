@@ -6,42 +6,39 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.RectF;
-import android.support.v7.widget.PopupMenu;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 
-import org.ilw.valhalla.R;
-import org.ilw.valhalla.activity.GameActivity;
-import org.ilw.valhalla.data.Terrain;
-import org.ilw.valhalla.dto.Cell;
+import org.ilw.valhalla.activity.PrepareActivity;
 import org.ilw.valhalla.dto.Gladiator;
 import org.ilw.valhalla.dto.Point;
-import org.ilw.valhalla.dto.Turn;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import static android.graphics.Bitmap.createScaledBitmap;
 
-public class GameView extends View {
+public class GamePrepareView extends View {
 
     private Bitmap mBitmap1;
     private Canvas mCanvas;
     private Paint paint, mBitmapPaint;
     private float canvasSize;
+    private int[][] cells;
     private final ScaleGestureDetector scaleGestureDetector;
     private final GestureDetector detector;
     private final int viewSize;
     private float mScaleFactor;
-
-    public GameView(Context context, AttributeSet attrs) {
+    public GamePrepareView(Context context, AttributeSet attrs) {
         super(context, attrs);
+
+
         viewSize=(int)convertDpToPixel(300, context);
         mScaleFactor=1f;//значение зума по умолчанию
         canvasSize=(int)(viewSize*mScaleFactor);//определяем размер канваса
@@ -69,59 +66,28 @@ public class GameView extends View {
         return true;
     }
 
-    public void prepareTurn()
-    {
-        for(Map.Entry<Integer,Turn> turn : ((GameActivity)getContext()).getTurns().entrySet()) {
-            Turn value = turn.getValue();
-            switch (value.getAction())
-            {
-                case "set":
-                    String[] gladiators = value.getValue1().split(";");
-                    for (String glad:gladiators) {
-                        int xPos = Integer.parseInt(glad.split(":")[0]);
-                        int yPos = Integer.parseInt(glad.split(":")[1]);
-                        String gladiator = glad.split(":")[3];
-                        int gladiatorDirection = Integer.parseInt(glad.split(":")[2]);
-                        if (!(((GameActivity) getContext()).isFirstPlayer()))
-                        {
-                            yPos = ((GameActivity) getContext()).getField().length - yPos - 1;
-                            xPos = ((GameActivity) getContext()).getField()[0].length - xPos - 1;
-                            gladiatorDirection = (gladiatorDirection == 1)? 3:1;
-                        }
-
-                        ((GameActivity) getContext()).getField()[yPos][xPos].setGladiator(Integer.parseInt(gladiator));
-                        ((GameActivity) getContext()).getField()[yPos][xPos].setGladiatorDirection(gladiatorDirection);
-                        ((GameActivity) getContext()).getField()[yPos][xPos].setOwner(Integer.parseInt(value.getHost()));
-
-                        ((GameActivity) getContext()).addQueue(0, new Point(xPos, yPos));
-                    }
-                    break;
-            }
-        }
-    }
-
     public void drawField()
     {
-        Cell[][] field = ((GameActivity) getContext()).getField();
-        if (field != null) {
+
+        if (cells != null) {
             paint = new Paint();
             paint.setAntiAlias(true);
             paint.setDither(true);
-            paint.setColor(0xffbebebe);
+            paint.setColor(0xffff0505);
             paint.setStrokeWidth(5f);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            int xLength = field[0].length;
-            int yLength = field.length;
-            for (int i = 0; i < yLength; i++) {
-                for (int j = 0; j < xLength; j++) {
-                    float x1 = j * canvasSize / xLength;
-                    float x2 = (j+ 1) * canvasSize / xLength;
-                    float y1 = i * canvasSize / yLength;
-                    float y2 = (i + 1) * canvasSize / yLength;
+            int xLength = (cells[0].length + 1) / 2;
+            int yLength = (cells.length + 1) / 2;
+            for (int i = 0; i < cells.length; i = i + 2) {
+                for (int j = 0; j < cells[0].length; j = j + 2) {
+                    float x1 = (j / 2) * canvasSize / xLength;
+                    float x2 = ((j / 2) + 1) * canvasSize / xLength;
+                    float y1 = (i / 2) * canvasSize / yLength;
+                    float y2 = ((i / 2) + 1) * canvasSize / yLength;
 
-                    switch (field[i][j].getGround()) {
+                    switch (cells[i][j]) {
                         case 100:
                             paint.setStyle(Paint.Style.FILL);
                             paint.setColor(Color.DKGRAY);
@@ -131,6 +97,7 @@ public class GameView extends View {
                             mCanvas.drawRect(x1, y1, x2, y2, paint);
                             break;
                         case 99:
+                            Log.d("TAG", new Float(x1).toString() + " " + new Float(x2).toString() + " " + new Float(y1).toString() + " " + new Float(y2).toString());
                             paint.setStyle(Paint.Style.FILL);
                             paint.setColor(Color.LTGRAY);
                             mCanvas.drawRect(x1, y1, x2, y2, paint);
@@ -147,44 +114,58 @@ public class GameView extends View {
                             mCanvas.drawRect(x1, y1, x2, y2, paint);
                             break;
                     }
-                    Point point = ((GameActivity) getContext()).getActivField();
+                }
+            }
+            Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
+            Log.d("TAG", new Boolean(activePoint==null).toString());
+            if (activePoint!=null)
+            {
+                float x1 = activePoint.getX() * canvasSize / xLength;
+                float x2 = (activePoint.getX()+1) * canvasSize / xLength;
+                float y1 = activePoint.getY() * canvasSize / yLength;
+                float y2 = (activePoint.getY()+1) * canvasSize / yLength;
+                Log.d("TAG", new Float(x1).toString() +  " " + new Float(x2).toString() + new Float(y1).toString() +  " " + new Float(y2).toString());
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(Color.YELLOW);
+                mCanvas.drawRect(x1, y1, x2, y2, paint);
+            }
+            Map<Point, Gladiator> gladiators = ((PrepareActivity) getContext()).getGladiatorsSet();
+            if (gladiators.size() > 0) {
+                Iterator it = gladiators.entrySet().iterator();
+                while (it.hasNext()) {
+                    Map.Entry pair = (Map.Entry) it.next();
+                    Point point = (Point) pair.getKey();
+                    //System.out.println(pair.getKey() + " = " + pair.getValue());
+                    //it.remove(); // avoids a ConcurrentModificationException
+                    //считаем координаты центра ячейки
 
-                    if ((i==point.getY()) && (j==point.getX()))
-                    {
-                        float pixel = (viewSize / xLength)/100;
-                        float x0 = (pixel*20) + (viewSize / xLength) * j;
-                        float y0 = (pixel*65) + (viewSize / yLength) * i;
-                        RectF rect = new RectF(x0,y0,x0+pixel*60,y0+pixel*30);
-                        paint.setStyle(Paint.Style.FILL);
-                        paint.setColor(Color.YELLOW);
-                        mCanvas.drawOval(rect,paint);
-                        paint.setStyle(Paint.Style.STROKE);
-                        paint.setColor(Color.RED);
-                        mCanvas.drawOval(rect,paint);
-                    }
-                    if (field[i][j].getGladiator() != -1)
-                    {
-                        float pixel = (viewSize / xLength)/100;
-                        float x0 = (pixel*15 + (viewSize / xLength) * j);
-                        float y0 = (pixel*10 + (viewSize / yLength) * i);
+                    float x0 = ((viewSize / (10 * xLength)) + (viewSize / xLength) * point.getX());
+                    float y0 = ((viewSize / (10 * yLength)) + (viewSize / yLength) * point.getY());
 
-                        Bitmap bmp = ((GameActivity) getContext()).getmStore().get(String.format("glad%s_%s",field[i][j].getOwner(), field[i][j].getGladiatorDirection()));
-                        Bitmap bmp1 = createScaledBitmap(bmp, (int) (bmp.getWidth() * 1.5), (int) (bmp.getHeight() * 1.5), false);
-                        Paint paint = new Paint();
-                        paint.setAntiAlias(true);
-                        paint.setFilterBitmap(true);
-                        mCanvas.drawBitmap(bmp1, x0, y0, paint);
-                    }
+                    Bitmap bmp = ((PrepareActivity) getContext()).getmStore().get("glad1");
+                    Bitmap bmp1 = createScaledBitmap(bmp, (int) (bmp.getWidth() * 1.5), (int) (bmp.getHeight() * 1.5), false);
+                    Paint paint = new Paint();
+                    paint.setAntiAlias(true);
+                    paint.setFilterBitmap(true);
+                    mCanvas.drawBitmap(bmp1, x0, y0, paint);
                 }
             }
         }
     }
+
 
     //переводим dp в пиксели
     public float convertDpToPixel(float dp,Context context){
         Resources resources = context.getResources();
         DisplayMetrics metrics = resources.getDisplayMetrics();
         return dp * (metrics.densityDpi/160f);
+    }
+
+    public void setCells(int[][] cells) {
+        this.cells = cells;
+        drawField();
+        invalidate();
+        requestLayout();
     }
 
     //унаследовались от ScaleGestureDetector.SimpleOnScaleGestureListener, чтобы не писать пустую реализацию ненужных
@@ -240,7 +221,7 @@ public class GameView extends View {
                 return true;
             }
 
-  /*          //обрабатываем одиночный тап
+            //обрабатываем одиночный тап
             @Override
             public boolean onSingleTapConfirmed(MotionEvent event){
                 List<Gladiator> gladiators = ((PrepareActivity)getContext()).getGladiatorsWait();
@@ -301,7 +282,7 @@ public class GameView extends View {
                     }
                 }
                 return true;
-            }*/
+            }
 
             //обрабатываем двойной тап
             @Override
@@ -313,78 +294,5 @@ public class GameView extends View {
                 invalidate();//перерисовываем канвас
                 return true;
             }
-
-            //обрабатываем двойной тап
-            @Override
-            public boolean onDown(MotionEvent event){
-                //получаем координаты ячейки, по которой тапнули
-                int eventX=(int)((event.getX()+getScrollX())/mScaleFactor);
-                int eventY=(int)((event.getY()+getScrollY())/mScaleFactor);
-                Cell[][] field = ((GameActivity) getContext()).getField();
-                int xLength = field[0].length;
-                int yLength = field.length;
-
-                int x = (int)(xLength *eventX/viewSize);
-                int y = (int)(yLength *eventY/viewSize);
-                StringBuffer text = new StringBuffer("Terrain:\n   ");
-                text.append(Terrain.fromId(field[y][x].getGround()).getDescription());
-                if (field[y][x].getGladiator() != -1)
-                {
-                    for (Gladiator gladiator:((GameActivity) getContext()).getGladiators())
-                    {
-                        if (gladiator.getId() == field[y][x].getGladiator())
-                        {
-                            text.append("\nGladiator:");
-                            text.append("\n   Name: ");
-                            text.append(gladiator.getName());
-                            text.append("\n   Str: ");
-                            text.append(gladiator.getStr());
-                            text.append("\n   Dex: ");
-                            text.append(gladiator.getDex());
-                            text.append("\n   Spd: ");
-                            text.append(gladiator.getSpd());
-                            text.append("\n   Con: ");
-                            text.append(gladiator.getCon());
-                            text.append("\n   Martial Art: ");
-                            text.append(gladiator.getMart_art());
-                            break;
-                        }
-                    }
-                }
-                ((GameActivity) getContext()).getTextView().setText(text.toString());
-
-                return true;
-            }
-
-            @Override
-            public void onLongPress(MotionEvent event) {
-                Log.d("KLICK", "Click 1");
-                showContextMenu(GameView.this);
-            }
         }
-
-    // Display anchored popup menu based on view selected
-    private void showContextMenu(View v) {
-        Log.d("KLICK", "Click 2");
-        PopupMenu popup = new PopupMenu(this.getContext(), v);
-        Log.d("KLICK", "Click 3");
-        // Inflate the menu from xml
-        popup.getMenuInflater().inflate(R.menu.popup_commands, popup.getMenu());
-        // Setup menu item selection
-        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-            public boolean onMenuItemClick(MenuItem item) {
-                switch (item.getItemId()) {
-                    case R.id.menu_keyword:
-                        //Toast.makeText(this), "Keyword!", Toast.LENGTH_SHORT).show();
-                        return true;
-                    case R.id.menu_popularity:
-                        //Toast.makeText(MainActivity.this, "Popularity!", Toast.LENGTH_SHORT).show();
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-        });
-        popup.show();
-    }
 }

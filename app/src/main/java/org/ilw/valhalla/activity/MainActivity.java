@@ -146,8 +146,6 @@ public class MainActivity extends Activity {
                 }
             });
 
-            db.deleteGame();
-
             this.getGame(user.getId());
 
     }
@@ -761,12 +759,15 @@ public class MainActivity extends Activity {
                         JSONObject userReq = jObj.getJSONObject("data");
                         Gson gson = new GsonBuilder().create();
                         returnValue = gson.fromJson(userReq.toString(), Game.class);
+
                             game = returnValue;
-                            db.addGame(game);
-                            gameid = game.getId();
+
                             Log.d(TAG, "game is not empty empty");
                             switch (game.getStatus()) {
                                 case "WAITING":
+                                    db.deleteGame();
+                                    db.addGame(game);
+                                    gameid = game.getId();
                                     createWaitView(game.getId());
                                     timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
                                     break;
@@ -781,7 +782,10 @@ public class MainActivity extends Activity {
                                     finish();
                                     break;
                                 case "STARTED":
-                                    intent = new Intent(MainActivity.this, PrepareActivity.class);
+                                    db.deleteGame();
+                                    db.addGame(game);
+                                    gameid = game.getId();
+                                    intent = new Intent(MainActivity.this, GameActivity.class);
                                     startActivity(intent);
                                     finish();
                                     break;
@@ -790,6 +794,7 @@ public class MainActivity extends Activity {
                         else
                             {
                                 Log.d(TAG, "game is empty");
+                                db.deleteGame();
                                 timerHandler.postDelayed(timerRefreshGamesRunnable, 0);
                             }
                         }

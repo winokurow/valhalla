@@ -38,8 +38,9 @@
             android:textColor="@color/white"
             android:textSize="15dp" />
     </LinearLayout>
-    
-    <org.ilw.valhalla.views.GameView android:layout_width="300dp"
+
+    <org.ilw.valhalla.views.GamePrepareView
+        android:layout_width="300dp"
         android:layout_height="300dp"
         android:id="@+id/game_view"
         android:layout_gravity="center"

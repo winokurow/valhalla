@@ -31,7 +31,7 @@ import org.ilw.valhalla.dto.Point;
 import org.ilw.valhalla.dto.User;
 import org.ilw.valhalla.helper.SQLiteHandler;
 import org.ilw.valhalla.helper.SessionManager;
-import org.ilw.valhalla.views.GameView;
+import org.ilw.valhalla.views.GamePrepareView;
 import org.ilw.valhalla.views.GladiatorsView;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -65,7 +65,7 @@ public class PrepareActivity extends Activity {
 
     protected boolean isFirstPlayer;
 
-    protected GameView view;
+    protected GamePrepareView view;
 
     protected GladiatorsView view2;
     protected int active = -1;
@@ -74,6 +74,8 @@ public class PrepareActivity extends Activity {
     protected boolean isPrepared;
 
     private HashMap<String, Bitmap> mStore = new HashMap<String, Bitmap>();
+
+    int[][] preparedCells;
 
     final Handler timerHandler = new Handler();
     Runnable timerWaitForPlayerRunnable = new Runnable() {
@@ -100,12 +102,10 @@ public class PrepareActivity extends Activity {
         db = new SQLiteHandler(getApplicationContext());
         user = db.getUserDetails();
         game = db.getGameDetails();
-        isPrepared = false;
-        if (game.getStatus().equals("PREPARED_WAITING"))
+        if ((game!=null) && (game.getStatus().equals("PREPARED_WAITING")))
         {
             isPrepared = true;
         }
-        Log.d("ddf", game.getStatus());
         Log.d("ddf", new Boolean(isPrepared).toString());
         getGame(user.getId());
 
@@ -332,7 +332,7 @@ public class PrepareActivity extends Activity {
                         db.addCells(returnValue);
                         fields = returnValue;
                         setContentView(R.layout.activity_prepare);
-                        view = (GameView) findViewById(R.id.game_view);
+                        view = (GamePrepareView) findViewById(R.id.game_view);
 
                         if (!(isFirstPlayer))
                         {
@@ -341,7 +341,7 @@ public class PrepareActivity extends Activity {
                         {
                             fields = fields.replaceAll("099", "100");
                         }
-                        int[][] preparedCells = getIntFields();
+                        preparedCells = getIntFields();
                         // Add new Game
 
                         view.setCells(preparedCells);
@@ -428,7 +428,7 @@ public class PrepareActivity extends Activity {
             if (isFirstPlayer) {
                 for (int i = 0; i < rows.length; i++) {
                     for (int j = 0; j < rowLength; j++) {
-                        returnValue[i][j] = Integer.parseInt(rows[i].split(",")[j]);
+                        returnValue[i][j] = Integer.parseInt(rows[i].split(",")[j].replaceAll("^[0]", ""));
                     }
                 }
             } else {
@@ -504,11 +504,11 @@ public class PrepareActivity extends Activity {
         return clone;
     }
 
-    public GameView getView() {
+    public GamePrepareView getView() {
         return view;
     }
 
-    public void setView(GameView view) {
+    public void setView(GamePrepareView view) {
         this.view = view;
     }
 
@@ -866,6 +866,8 @@ public class PrepareActivity extends Activity {
                     // Check for error node in json
                     if (!error) {
                         db.setGameStatus(GameStatus.PREPARE_WAITING.asString(), game.getId());
+                        game = db.getGameDetails();
+                        Log.d("ddf", "STATUS" + game.getStatus());
                         pDialog.setMessage("Waiting for second player ...");
                         showDialog();
                         addTurn1();
@@ -971,11 +973,15 @@ public class PrepareActivity extends Activity {
                 while (it.hasNext()) {
 
                     Map.Entry pair = (Map.Entry)it.next();
-                    glad = String.format("%s:%s:%s;",((Point)pair.getKey()).getX(), ((Point)pair.getKey()).getY(), ((Gladiator)pair.getValue()).getId());
-
+                    if (isFirstPlayer) {
+                        glad = String.format("%s:%s:%s:%s;", ((Point) pair.getKey()).getX(), ((Point) pair.getKey()).getY(), "1", ((Gladiator) pair.getValue()).getId());
+                    } else {
+                        int xLength = (preparedCells[0].length + 1) / 2;
+                        int yLength = (preparedCells.length + 1) / 2;
+                        glad = String.format("%s:%s:%s:%s;", xLength-((Point) pair.getKey()).getX() - 1, yLength - ((Point) pair.getKey()).getY() - 1, "3", ((Gladiator) pair.getValue()).getId());
+                    }
                     it.remove(); // avoids a ConcurrentModificationException
                 }
-                Log.d("HAHA", glad);
                 params.put("value1", glad);
                     return params;
             }
@@ -1051,8 +1057,13 @@ public class PrepareActivity extends Activity {
                 while (it.hasNext()) {
 
                     Map.Entry pair = (Map.Entry)it.next();
-                    glad = String.format("%s:%s:%s;",((Point)pair.getKey()).getX(), ((Point)pair.getKey()).getY(), ((Gladiator)pair.getValue()).getId());
-
+                    if (isFirstPlayer) {
+                        glad = String.format("%s:%s:%s:%s;", ((Point) pair.getKey()).getX(), ((Point) pair.getKey()).getY(), "1", ((Gladiator) pair.getValue()).getId());
+                    } else {
+                        int xLength = (preparedCells[0].length + 1) / 2;
+                        int yLength = (preparedCells.length + 1) / 2;
+                        glad = String.format("%s:%s:%s:%s;", xLength-((Point) pair.getKey()).getX() - 1, yLength - ((Point) pair.getKey()).getY() - 1, "3", ((Gladiator) pair.getValue()).getId());
+                    }
                     it.remove(); // avoids a ConcurrentModificationException
                 }
                 params.put("value1", glad);
