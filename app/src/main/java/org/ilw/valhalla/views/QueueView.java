@@ -53,8 +53,27 @@ public class QueueView extends View {
         int i = 0;
         for(Map.Entry<Double, Point> entry : queue.entrySet()) {
             drawRect(i * canvasSize / 5, canvasY1Size, (i + 1) * canvasSize / 5, canvasY2Size, paint, Color.WHITE);
-
-            Bitmap bmp = ((GameActivity) getContext()).getmStore().get(String.format("glad%s_%s",field[entry.getValue().getY()][entry.getValue().getX()].getOwner(), field[entry.getValue().getY()][entry.getValue().getX()].getGladiatorDirection()));
+            int direction = field[entry.getValue().getY()][entry.getValue().getX()].getGladiatorDirection();
+            if (!(((GameActivity) getContext()).isFirstPlayer()))
+            {
+                switch (direction)
+                {
+                    case 1:
+                        direction = 3;
+                        break;
+                    case 2:
+                        direction = 4;
+                        break;
+                    case 3:
+                        direction = 1;
+                        break;
+                    case 4:
+                        direction = 2;
+                        break;
+                }
+            }
+            int owner = field[entry.getValue().getY()][entry.getValue().getX()].getOwner();
+            Bitmap bmp = ((GameActivity) getContext()).getmStore().get(String.format("glad%s_%s",owner, direction));
             mCanvas.drawBitmap(bmp, i * canvasSize / 5 + 20, canvasY1Size + 20, null);
             if (i==4)
             {

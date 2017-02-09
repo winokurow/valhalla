@@ -22,7 +22,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
 
     // All Static variables
     // Database Version
-    private static final int DATABASE_VERSION = 54;
+    private static final int DATABASE_VERSION = 58;
 
     // Database Name
     private static final String DATABASE_NAME = "android_api";
@@ -70,11 +70,15 @@ public class SQLiteHandler extends SQLiteOpenHelper {
     private static final String KEY_GLADIATOR_DEX = "dex";
     private static final String KEY_GLADIATOR_SPD = "spd";
     private static final String KEY_GLADIATOR_CON = "con";
+    private static final String KEY_GLADIATOR_INT = "int";
+    private static final String KEY_GLADIATOR_STAMINA = "stamina";
     private static final String KEY_GLADIATOR_MART_ART = "mart_art";
     private static final String KEY_GLADIATOR_STR_PROGRESS = "str_progress";
     private static final String KEY_GLADIATOR_DEX_PROGRESS = "dex_progress";
     private static final String KEY_GLADIATOR_SPD_PROGRESS = "spd_progress";
     private static final String KEY_GLADIATOR_CON_PROGRESS = "con_progress";
+    private static final String KEY_GLADIATOR_INT_PROGRESS = "int_progress";
+    private static final String KEY_GLADIATOR_STAMINA_PROGRESS = "stamina_progress";
     private static final String KEY_GLADIATOR_MART_ART_PROGRESS = "mart_art_progress";
 
     // Turns Table Columns names
@@ -112,7 +116,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         String CREATE_GLADIATORS_TABLE = "CREATE TABLE " + TABLE_GLADIATORS + "("
                 + KEY_GLADIATOR_ID + " STRING PRIMARY KEY," + KEY_GLADIATOR_USER_ID + " TEXT,"+ KEY_GLADIATOR_NAME + " TEXT,"+ KEY_GLADIATOR_STR + " TEXT," + KEY_GLADIATOR_STR_PROGRESS + " TEXT, "
                 + KEY_GLADIATOR_DEX + " TEXT,"+ KEY_GLADIATOR_DEX_PROGRESS + " TEXT, "+ KEY_GLADIATOR_SPD + " TEXT,"+ KEY_GLADIATOR_SPD_PROGRESS + " TEXT, "+ KEY_GLADIATOR_CON  + " TEXT,"
-                + KEY_GLADIATOR_CON_PROGRESS + " TEXT, "+ KEY_GLADIATOR_MART_ART + " TEXT, "+ KEY_GLADIATOR_MART_ART_PROGRESS + " TEXT, " + KEY_CREATED_AT + " TEXT, " + KEY_UPDATED_AT + " TEXT"+ ")";
+                + KEY_GLADIATOR_CON_PROGRESS + " TEXT, "+ KEY_GLADIATOR_INT + " TEXT,"+ KEY_GLADIATOR_INT_PROGRESS + " TEXT, "+ KEY_GLADIATOR_STAMINA + " TEXT,"+ KEY_GLADIATOR_STAMINA_PROGRESS + " TEXT, " + KEY_GLADIATOR_MART_ART + " TEXT, "+ KEY_GLADIATOR_MART_ART_PROGRESS + " TEXT, " + KEY_CREATED_AT + " TEXT, " + KEY_UPDATED_AT + " TEXT"+ ")";
         db.execSQL(CREATE_GLADIATORS_TABLE);
 
         String CREATE_TURNS_TABLE = "CREATE TABLE " + TABLE_TURNS + "("
@@ -190,11 +194,15 @@ public class SQLiteHandler extends SQLiteOpenHelper {
             values.put(KEY_GLADIATOR_DEX, gladiator.getDex());
             values.put(KEY_GLADIATOR_SPD, gladiator.getSpd());
             values.put(KEY_GLADIATOR_CON, gladiator.getCon());
+            values.put(KEY_GLADIATOR_INT, gladiator.getIntel());
+            values.put(KEY_GLADIATOR_STAMINA, gladiator.getStamina());
             values.put(KEY_GLADIATOR_MART_ART, gladiator.getMart_art());
             values.put(KEY_GLADIATOR_STR_PROGRESS, gladiator.getStr_progress());
             values.put(KEY_GLADIATOR_DEX_PROGRESS, gladiator.getDex_progress());
             values.put(KEY_GLADIATOR_SPD_PROGRESS, gladiator.getSpd_progress());
             values.put(KEY_GLADIATOR_CON_PROGRESS, gladiator.getCon_progress());
+            values.put(KEY_GLADIATOR_INT_PROGRESS, gladiator.getCon_progress());
+            values.put(KEY_GLADIATOR_STAMINA_PROGRESS, gladiator.getCon_progress());
             values.put(KEY_GLADIATOR_MART_ART_PROGRESS, gladiator.getMart_art_progress());
             values.put(KEY_CREATED_AT, gladiator.getCreated_at()); // Created At
             values.put(KEY_UPDATED_AT, gladiator.getUpdated_at()); // Updated At
@@ -311,7 +319,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         // Move to first row
         if (cursor.moveToFirst()) {
             do {
-                Gladiator gladiator = new Gladiator (cursor.getInt(0), cursor.getInt(1), cursor.getString(2), cursor.getInt(3), cursor.getInt(4), cursor.getInt(5), cursor.getInt(6), cursor.getInt(7), cursor.getInt(8), cursor.getInt(9), cursor.getInt(10), cursor.getInt(11), cursor.getInt(12), cursor.getString(13), cursor.getString(14));
+                Gladiator gladiator = new Gladiator (cursor.getInt(0), cursor.getInt(1), cursor.getString(2), cursor.getInt(3), cursor.getInt(4), cursor.getInt(5), cursor.getInt(6), cursor.getInt(7), cursor.getInt(8), cursor.getInt(9), cursor.getInt(10), cursor.getInt(11), cursor.getInt(12), cursor.getInt(13), cursor.getInt(14), cursor.getInt(15), cursor.getInt(16), cursor.getString(17), cursor.getString(18));
                 gladiators.add(gladiator);
                 // get the data into array, or class variable
             } while (cursor.moveToNext());

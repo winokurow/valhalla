@@ -39,9 +39,11 @@ public class GameView extends View {
     private final GestureDetector detector;
     private final int viewSize;
     private float mScaleFactor;
+    PopupMenu popup;
 
     public GameView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        popup = new PopupMenu(this.getContext(), this);
         viewSize=(int)convertDpToPixel(300, context);
         mScaleFactor=1f;//значение зума по умолчанию
         canvasSize=(int)(viewSize*mScaleFactor);//определяем размер канваса
@@ -82,17 +84,10 @@ public class GameView extends View {
                         int yPos = Integer.parseInt(glad.split(":")[1]);
                         String gladiator = glad.split(":")[3];
                         int gladiatorDirection = Integer.parseInt(glad.split(":")[2]);
-                        if (!(((GameActivity) getContext()).isFirstPlayer()))
-                        {
-                            yPos = ((GameActivity) getContext()).getField().length - yPos - 1;
-                            xPos = ((GameActivity) getContext()).getField()[0].length - xPos - 1;
-                            gladiatorDirection = (gladiatorDirection == 1)? 3:1;
-                        }
-
+                        Log.d("eeeee", ""+ xPos + yPos + gladiator + value.getHost());
                         ((GameActivity) getContext()).getField()[yPos][xPos].setGladiator(Integer.parseInt(gladiator));
                         ((GameActivity) getContext()).getField()[yPos][xPos].setGladiatorDirection(gladiatorDirection);
                         ((GameActivity) getContext()).getField()[yPos][xPos].setOwner(Integer.parseInt(value.getHost()));
-
                         ((GameActivity) getContext()).addQueue(0, new Point(xPos, yPos));
                     }
                     break;
@@ -103,6 +98,15 @@ public class GameView extends View {
     public void drawField()
     {
         Cell[][] field = ((GameActivity) getContext()).getField();
+        int xLength = field[0].length;
+        int yLength = field.length;
+        Point point = new Point(((GameActivity) getContext()).getActivField().getX(),((GameActivity) getContext()).getActivField().getY());
+        if (!(((GameActivity) getContext()).isFirstPlayer()))
+        {
+            point.setX(xLength - point.getX() - 1);
+            point.setY(yLength - point.getY() - 1);
+        }
+
         if (field != null) {
             paint = new Paint();
             paint.setAntiAlias(true);
@@ -112,16 +116,22 @@ public class GameView extends View {
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            int xLength = field[0].length;
-            int yLength = field.length;
             for (int i = 0; i < yLength; i++) {
                 for (int j = 0; j < xLength; j++) {
+                    int posX = j;
+                    int posY = i;
+                    if (!(((GameActivity) getContext()).isFirstPlayer()))
+                    {
+                        posX = xLength - posX - 1;
+                        posY = yLength - posY - 1;
+                    }
+
                     float x1 = j * canvasSize / xLength;
                     float x2 = (j+ 1) * canvasSize / xLength;
                     float y1 = i * canvasSize / yLength;
                     float y2 = (i + 1) * canvasSize / yLength;
 
-                    switch (field[i][j].getGround()) {
+                    switch (field[posY][posX].getGround()) {
                         case 100:
                             paint.setStyle(Paint.Style.FILL);
                             paint.setColor(Color.DKGRAY);
@@ -147,7 +157,7 @@ public class GameView extends View {
                             mCanvas.drawRect(x1, y1, x2, y2, paint);
                             break;
                     }
-                    Point point = ((GameActivity) getContext()).getActivField();
+
 
                     if ((i==point.getY()) && (j==point.getX()))
                     {
@@ -162,13 +172,33 @@ public class GameView extends View {
                         paint.setColor(Color.RED);
                         mCanvas.drawOval(rect,paint);
                     }
-                    if (field[i][j].getGladiator() != -1)
+                    if (field[posY][posX].getGladiator() != -1)
                     {
                         float pixel = (viewSize / xLength)/100;
                         float x0 = (pixel*15 + (viewSize / xLength) * j);
                         float y0 = (pixel*10 + (viewSize / yLength) * i);
 
-                        Bitmap bmp = ((GameActivity) getContext()).getmStore().get(String.format("glad%s_%s",field[i][j].getOwner(), field[i][j].getGladiatorDirection()));
+                        int direction = field[posY][posX].getGladiatorDirection();
+
+                        if (!(((GameActivity) getContext()).isFirstPlayer()))
+                        {
+                            switch (direction)
+                            {
+                                case 1:
+                                    direction = 3;
+                                    break;
+                                case 2:
+                                    direction = 4;
+                                    break;
+                                case 3:
+                                    direction = 1;
+                                    break;
+                                case 4:
+                                    direction = 2;
+                                    break;
+                            }
+                        }
+                        Bitmap bmp = ((GameActivity) getContext()).getmStore().get(String.format("glad%s_%s",field[posY][posX].getOwner(), direction));
                         Bitmap bmp1 = createScaledBitmap(bmp, (int) (bmp.getWidth() * 1.5), (int) (bmp.getHeight() * 1.5), false);
                         Paint paint = new Paint();
                         paint.setAntiAlias(true);
@@ -240,69 +270,6 @@ public class GameView extends View {
                 return true;
             }
 
-  /*          //обрабатываем одиночный тап
-            @Override
-            public boolean onSingleTapConfirmed(MotionEvent event){
-                List<Gladiator> gladiators = ((PrepareActivity)getContext()).getGladiatorsWait();
-
-                //получаем координаты ячейки, по которой тапнули
-                int eventX=(int)((event.getX()+getScrollX())/mScaleFactor);
-                int eventY=(int)((event.getY()+getScrollY())/mScaleFactor);
-                int xLength = (cells[0].length+1)/2;
-                int yLength = (cells.length+1)/2;
-                int x = (int)(xLength *eventX/viewSize);
-                int y = (int)(yLength *eventY/viewSize);
-                int active = ((PrepareActivity)getContext()).getActive();
-                Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
-                Map<Point, Gladiator> gladiatorsSet = ((PrepareActivity)getContext()).getGladiatorsSet();
-
-                if ((active>-1))
-                {
-                    if (((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y)))))
-                    {
-                    //Log.d("TAG", gladiatorsSet.toString());
-                    gladiatorsSet.put(new Point(x,y), gladiators.get(active));
-                    ((PrepareActivity)getContext()).setGladiatorsSet(gladiatorsSet);
-
-                    drawField();
-                    invalidate();
-                    gladiators.remove(active);
-                    ((PrepareActivity)getContext()).getView2().invalidate();
-                    ((PrepareActivity)getContext()).setActive(-1);
-                    }
-                }
-
-                else if (activePoint!=null){
-                    if (activePoint.equals(new  Point(x, y)))
-                    {
-                        ((PrepareActivity)getContext()).setActivePoint(null);
-                    } else
-                    {
-                        if (((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y))))) {
-                            //Log.d("TAG", gladiatorsSet.toString());
-                            gladiatorsSet.put(new Point(x, y), gladiatorsSet.get(activePoint));
-                            gladiatorsSet.remove(activePoint);
-                            ((PrepareActivity) getContext()).setGladiatorsSet(gladiatorsSet);
-                            ((PrepareActivity)getContext()).setActivePoint(null);
-                            ((PrepareActivity) getContext()).getView2().invalidate();
-                        }
-                    }
-                    drawField();
-                    invalidate();
-                } else {
-                    if (((gladiatorsSet.containsKey(new Point(x, y)))))
-                    {
-                        Point point = new Point(x,y);
-                        activePoint = point;
-                        Log.d("TAG", new Integer (activePoint.getX()).toString());
-                        ((PrepareActivity)getContext()).setActivePoint(activePoint);
-                        drawField();
-                        invalidate();
-                    }
-                }
-                return true;
-            }*/
-
             //обрабатываем двойной тап
             @Override
             public boolean onDoubleTapEvent(MotionEvent event){
@@ -321,14 +288,25 @@ public class GameView extends View {
                 int eventX=(int)((event.getX()+getScrollX())/mScaleFactor);
                 int eventY=(int)((event.getY()+getScrollY())/mScaleFactor);
                 Cell[][] field = ((GameActivity) getContext()).getField();
+
                 int xLength = field[0].length;
                 int yLength = field.length;
 
                 int x = (int)(xLength *eventX/viewSize);
                 int y = (int)(yLength *eventY/viewSize);
+
+                if (!(((GameActivity) getContext()).isFirstPlayer()))
+                {
+                    x = xLength - x - 1;
+                    y = yLength - y - 1;
+                }
+
+                //Log.d("rer", new Boolean(((GameActivity) getContext()).isFirstPlayer()).toString());
                 StringBuffer text = new StringBuffer("Terrain:\n   ");
                 text.append(Terrain.fromId(field[y][x].getGround()).getDescription());
-                if (field[y][x].getGladiator() != -1)
+                int temp = (((GameActivity) getContext()).isFirstPlayer()) ? 1:2;
+
+                if ((field[y][x].getGladiator() != -1) && (field[y][x].getOwner()==temp))
                 {
                     for (Gladiator gladiator:((GameActivity) getContext()).getGladiators())
                     {
@@ -339,12 +317,16 @@ public class GameView extends View {
                             text.append(gladiator.getName());
                             text.append("\n   Str: ");
                             text.append(gladiator.getStr());
-                            text.append("\n   Dex: ");
+                            text.append("   Dex: ");
                             text.append(gladiator.getDex());
                             text.append("\n   Spd: ");
                             text.append(gladiator.getSpd());
-                            text.append("\n   Con: ");
+                            text.append("   Con: ");
                             text.append(gladiator.getCon());
+                            text.append("\n   Int: ");
+                            text.append(gladiator.getIntel());
+                            text.append("   Stamina: ");
+                            text.append(gladiator.getStamina());
                             text.append("\n   Martial Art: ");
                             text.append(gladiator.getMart_art());
                             break;
@@ -358,28 +340,43 @@ public class GameView extends View {
 
             @Override
             public void onLongPress(MotionEvent event) {
-                Log.d("KLICK", "Click 1");
+                //получаем координаты ячейки, по которой тапнули
+                int eventX=(int)((event.getX()+getScrollX())/mScaleFactor);
+                int eventY=(int)((event.getY()+getScrollY())/mScaleFactor);
+                Cell[][] field = ((GameActivity) getContext()).getField();
+
+                int xLength = field[0].length;
+                int yLength = field.length;
+
+                int x = (int)(xLength *eventX/viewSize);
+                int y = (int)(yLength *eventY/viewSize);
+
+                if (!(((GameActivity) getContext()).isFirstPlayer()))
+                {
+                    x = xLength - x - 1;
+                    y = yLength - y - 1;
+                }
+                popup = new PopupMenu(getContext(), GameView.this);
+                Point point = new Point(((GameActivity) getContext()).getActivField().getX(),((GameActivity) getContext()).getActivField().getY());
+                if ((y==point.getY()) && (x==point.getX())) {
+                    popup.getMenu().add(1, R.id.menu_skip, 1, "skip");
+                }
                 showContextMenu(GameView.this);
             }
         }
 
     // Display anchored popup menu based on view selected
     private void showContextMenu(View v) {
-        Log.d("KLICK", "Click 2");
-        PopupMenu popup = new PopupMenu(this.getContext(), v);
-        Log.d("KLICK", "Click 3");
         // Inflate the menu from xml
-        popup.getMenuInflater().inflate(R.menu.popup_commands, popup.getMenu());
+        //popup.getMenuInflater().inflate(R.menu.popup_commands, popup.getMenu());
         // Setup menu item selection
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             public boolean onMenuItemClick(MenuItem item) {
                 switch (item.getItemId()) {
-                    case R.id.menu_keyword:
+                    case R.id.menu_skip:
                         //Toast.makeText(this), "Keyword!", Toast.LENGTH_SHORT).show();
                         return true;
-                    case R.id.menu_popularity:
-                        //Toast.makeText(MainActivity.this, "Popularity!", Toast.LENGTH_SHORT).show();
-                        return true;
+
                     default:
                         return false;
                 }

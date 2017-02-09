@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/menu_keyword"
-        android:title="Keyword" />
-    <item android:id="@+id/menu_popularity"
-        android:title="Popularity" />
+    <item
+        android:id="@+id/menu_skip"
+        android:title="Skip"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_walk"
+        android:title="Skip"
+        android:visible="true"/>
 </menu>

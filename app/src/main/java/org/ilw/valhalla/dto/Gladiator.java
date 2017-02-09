@@ -12,6 +12,10 @@ public class Gladiator {
     private int spd_progress;
     private int con;
     private int con_progress;
+    private int intel;
+    private int intel_progress;
+    private int stamina;
+    private int stamina_progress;
     private int mart_art;
     private int mart_art_progress;
     private String created_at;
@@ -137,10 +141,39 @@ public class Gladiator {
         this.updated_at = updated_at;
     }
 
-    public Gladiator(int id, int userid, String name, int str, int str_progress, int dex, int dex_progress, int spd,
-                     int spd_progress, int con, int con_progress, int mart_art, int mart_art_progress, String created_at,
-                     String updated_at) {
-        super();
+    public int getIntel() {
+        return intel;
+    }
+
+    public void setIntel(int intel) {
+        this.intel = intel;
+    }
+
+    public int getIntel_progress() {
+        return intel_progress;
+    }
+
+    public void setIntel_progress(int intel_progress) {
+        this.intel_progress = intel_progress;
+    }
+
+    public int getStamina() {
+        return stamina;
+    }
+
+    public void setStamina(int stamina) {
+        this.stamina = stamina;
+    }
+
+    public int getStamina_progress() {
+        return stamina_progress;
+    }
+
+    public void setStamina_progress(int stamina_progress) {
+        this.stamina_progress = stamina_progress;
+    }
+
+    public Gladiator(int id, int userid, String name, int str, int str_progress, int dex, int dex_progress, int spd, int spd_progress, int con, int con_progress, int intel, int intel_progress, int stamina, int stamina_progress, int mart_art, int mart_art_progress, String created_at, String updated_at) {
         this.id = id;
         this.userid = userid;
         this.name = name;
@@ -152,10 +185,13 @@ public class Gladiator {
         this.spd_progress = spd_progress;
         this.con = con;
         this.con_progress = con_progress;
+        this.intel = intel;
+        this.intel_progress = intel_progress;
+        this.stamina = stamina;
+        this.stamina_progress = stamina_progress;
         this.mart_art = mart_art;
         this.mart_art_progress = mart_art_progress;
         this.created_at = created_at;
         this.updated_at = updated_at;
     }
-
 }

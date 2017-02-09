@@ -194,10 +194,11 @@ public class GameActivity extends Activity {
                     gameView.invalidate();
                     queueView.invalidate();
                     Point point = getActivField();
+
                     int host = field[point.getY()][point.getX()].getOwner();
-                    Log.d(TAG, new Integer(host).toString());
-                    Log.d(TAG, new Boolean(isFirstPlayer).toString());
-                    if (isFirstPlayer == (host==1))
+
+                    int temp = isFirstPlayer ? 1:2;
+                    if (!(temp == host))
                     {
                         pDialog.setMessage("Waiting for second player ...");
                         showDialog();
@@ -241,12 +242,6 @@ public class GameActivity extends Activity {
                 for (int i = 0; i < yLength; i++) {
                     for (int j = 0; j < xLength; j++) {
                         int iTemp = Integer.parseInt(rows[i*2].split(",")[j*2].replaceAll("^[0]", ""));
-                        if (!(this.isFirstPlayer()))
-                        {
-                            //Log.d(TAG, "test" + new Integer(xLength - j*2 - 1).toString());
-                            iTemp = Integer.parseInt(rows[rows.length - i*2 - 1].split(",")[rowLength - j*2 - 1].replaceAll("^[0]", ""));
-                        }
-
                         field[i][j] = new Cell();
                         field[i][j].setGround(iTemp);
                     }

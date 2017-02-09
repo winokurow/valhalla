@@ -85,10 +85,9 @@ public class GladiatorsView extends View {
                         paint2.setTextSize(40);
                         int init = 50;
                         mCanvas.drawText("Name: " + gladiators.get(active).getName(), 30, canvasY2Size + init, paint2);
-                        mCanvas.drawText("Str:  " + gladiators.get(active).getStr(), 30, canvasY2Size + init + 50, paint2);
-                        mCanvas.drawText("Dex: " + gladiators.get(active).getDex(), 30, canvasY2Size + init + 100, paint2);
-                        mCanvas.drawText("Spd: " + gladiators.get(active).getSpd(), 30, canvasY2Size + init + 150, paint2);
-                        mCanvas.drawText("Con: " + gladiators.get(active).getCon(), 30, canvasY2Size + init + 200, paint2);
+                        mCanvas.drawText("Str:  " + gladiators.get(active).getStr() + "    " + "Dex: " + gladiators.get(active).getDex(), 30, canvasY2Size + init + 50, paint2);
+                        mCanvas.drawText("Spd:  " + gladiators.get(active).getSpd() + "  " + "Con: " + gladiators.get(active).getCon(), 30, canvasY2Size + init + 100, paint2);
+                        mCanvas.drawText("Int: " + gladiators.get(active).getIntel() + "     " + "Stamina: " + gladiators.get(active).getStamina(), 30, canvasY2Size + init + 150, paint2);
                         mCanvas.drawText("Martial Art: " + gladiators.get(active).getMart_art(), 30, canvasY2Size + init + 250, paint2);
 
                     }

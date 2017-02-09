@@ -428,7 +428,8 @@ public class PrepareActivity extends Activity {
             if (isFirstPlayer) {
                 for (int i = 0; i < rows.length; i++) {
                     for (int j = 0; j < rowLength; j++) {
-                        returnValue[i][j] = Integer.parseInt(rows[i].split(",")[j].replaceAll("^[0]", ""));
+                        Log.d("here", rows[i].split(",")[j]);
+                        returnValue[i][j] = Integer.parseInt(rows[i].split(",")[j]);
                     }
                 }
             } else {
