@@ -2,10 +2,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/menu_skip"
-        android:title="Skip"
+        android:title="skip"
         android:visible="true"/>
     <item
         android:id="@+id/menu_walk"
-        android:title="Skip"
+        android:title="walk"
         android:visible="true"/>
 </menu>

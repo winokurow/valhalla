@@ -10,7 +10,6 @@ import android.graphics.RectF;
 import android.support.v7.widget.PopupMenu;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -26,6 +25,7 @@ import org.ilw.valhalla.dto.Point;
 import org.ilw.valhalla.dto.Turn;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 import static android.graphics.Bitmap.createScaledBitmap;
 
@@ -39,6 +39,7 @@ public class GameView extends View {
     private final GestureDetector detector;
     private final int viewSize;
     private float mScaleFactor;
+    private Point clickPoint;
     PopupMenu popup;
 
     public GameView(Context context, AttributeSet attrs) {
@@ -73,24 +74,86 @@ public class GameView extends View {
 
     public void prepareTurn()
     {
+        Cell[][] field = ((GameActivity) getContext()).getField();
+
         for(Map.Entry<Integer,Turn> turn : ((GameActivity)getContext()).getTurns().entrySet()) {
             Turn value = turn.getValue();
-            switch (value.getAction())
-            {
-                case "set":
-                    String[] gladiators = value.getValue1().split(";");
-                    for (String glad:gladiators) {
-                        int xPos = Integer.parseInt(glad.split(":")[0]);
-                        int yPos = Integer.parseInt(glad.split(":")[1]);
-                        String gladiator = glad.split(":")[3];
-                        int gladiatorDirection = Integer.parseInt(glad.split(":")[2]);
-                        Log.d("eeeee", ""+ xPos + yPos + gladiator + value.getHost());
-                        ((GameActivity) getContext()).getField()[yPos][xPos].setGladiator(Integer.parseInt(gladiator));
-                        ((GameActivity) getContext()).getField()[yPos][xPos].setGladiatorDirection(gladiatorDirection);
-                        ((GameActivity) getContext()).getField()[yPos][xPos].setOwner(Integer.parseInt(value.getHost()));
-                        ((GameActivity) getContext()).addQueue(0, new Point(xPos, yPos));
+
+            if (value.getTurn() > ((GameActivity) getContext()).getTurnNumber()) {
+
+
+                switch (value.getAction()) {
+                    case "set":
+                        if (value.getTurn()==-10) {
+                            ((GameActivity) getContext()).setTurnNumber(0);
+                            ((GameActivity) getContext()).addLogString("0: Start Game\n");
+                        }
+                        String[] gladiators = value.getValue1().split(";");
+                        for (String glad : gladiators) {
+                            int xPos = Integer.parseInt(glad.split(":")[0]);
+                            int yPos = Integer.parseInt(glad.split(":")[1]);
+                            String gladiator = glad.split(":")[3];
+                            int gladiatorDirection = Integer.parseInt(glad.split(":")[2]);
+
+                            ((GameActivity) getContext()).getField()[yPos][xPos].setGladiator(Integer.parseInt(gladiator));
+                            ((GameActivity) getContext()).getField()[yPos][xPos].setGladiatorDirection(gladiatorDirection);
+                            ((GameActivity) getContext()).getField()[yPos][xPos].setOwner(Integer.parseInt(value.getHost()));
+                            ((GameActivity) getContext()).addQueue(0, new Point(xPos, yPos));
+                        }
+                        break;
+                    case "skip":
+                    {
+                        TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
+                        Point point = queue.firstEntry().getValue();
+                        Gladiator gladiator = ((GameActivity) getContext()).getGladiatorById(field[point.getY()][point.getX()].getGladiator());
+
+                        queue.remove(queue.firstKey());
+                        Double time = queue.firstKey();
+                        ((GameActivity) getContext()).addQueue(time, point);
+                        ((GameActivity) getContext()).setTurnNumber(value.getTurn());
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " skipped turn\n");
+                        break;
                     }
-                    break;
+                    case "walk":
+                    {
+                        TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
+                        Double time = queue.firstKey();
+                        int xPos1 = Integer.parseInt(value.getValue1().split(";")[0]);
+                        int yPos1 = Integer.parseInt(value.getValue1().split(";")[1]);
+                        int xPos2 = Integer.parseInt(value.getValue2().split(";")[0]);
+                        int yPos2 = Integer.parseInt(value.getValue2().split(";")[1]);
+
+                        Gladiator gladiator = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
+
+                        field[yPos2][xPos2].setGladiator(gladiator.getId());
+                        field[yPos2][xPos2].setGladiatorDirection(field[yPos1][xPos1].getGladiatorDirection());
+                        field[yPos2][xPos2].setOwner(field[yPos1][xPos1].getOwner());
+
+                        field[yPos1][xPos1].setGladiator(-1);
+                        field[yPos1][xPos1].setGladiatorDirection(-1);
+                        field[yPos1][xPos1].setOwner(-1);
+
+                        int speedMod = gladiator.getSpd();
+                        double dist = 1;
+                        if ((xPos1 != xPos2) && (yPos1 != yPos2))
+                        {
+                            dist = 1.4;
+                        }
+
+                        double speed = (Terrain.fromId(field[yPos1][xPos1].getGround()).getSpeed() + Terrain.fromId(field[yPos2][xPos2].getGround()).getSpeed())/2;
+                        speed = speed*speedMod/5;
+                        time = time + speed/dist;
+                        Point point = queue.firstEntry().getValue();
+                        time = time+speed;
+                        queue.remove(queue.firstKey());
+
+                        ((GameActivity) getContext()).addQueue(time, new Point(xPos2, yPos2));
+                        ((GameActivity) getContext()).setTurnNumber(value.getTurn());
+
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " went to " + yPos2 + " " + xPos2 + "\n");
+
+                    }
+                }
             }
         }
     }
@@ -360,7 +423,17 @@ public class GameView extends View {
                 Point point = new Point(((GameActivity) getContext()).getActivField().getX(),((GameActivity) getContext()).getActivField().getY());
                 if ((y==point.getY()) && (x==point.getX())) {
                     popup.getMenu().add(1, R.id.menu_skip, 1, "skip");
+                } else {
+                    if ((Math.abs(point.getY()-y) <= 1) && (Math.abs(point.getX()-x) <= 1))
+                    {
+                        clickPoint = new Point(x,y);
+                        if (field[y][x].getGladiator()==-1) {
+                            popup.getMenu().add(1, R.id.menu_walk, 1, "walk");
+                        }
+                    }
+
                 }
+
                 showContextMenu(GameView.this);
             }
         }
@@ -372,9 +445,14 @@ public class GameView extends View {
         // Setup menu item selection
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             public boolean onMenuItemClick(MenuItem item) {
+                Point point = new Point(((GameActivity) getContext()).getActivField().getX(),((GameActivity) getContext()).getActivField().getY());
                 switch (item.getItemId()) {
                     case R.id.menu_skip:
-                        //Toast.makeText(this), "Keyword!", Toast.LENGTH_SHORT).show();
+                        ((GameActivity) getContext()).turnProcessing("skip", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "", "");
+                        return true;
+                    case R.id.menu_walk:
+
+                        ((GameActivity) getContext()).turnProcessing("walk", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "" + clickPoint.getX() +";"+clickPoint.getY() + ";", "");
                         return true;
 
                     default:
@@ -384,4 +462,5 @@ public class GameView extends View {
         });
         popup.show();
     }
+
 }

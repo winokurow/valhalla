@@ -5,6 +5,7 @@ import android.app.ProgressDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -59,7 +60,17 @@ public class GameActivity extends Activity {
     protected TextView textView;
     protected List<Gladiator> gladiators;
     private HashMap<String, Bitmap> mStore = new HashMap<String, Bitmap>();
-
+    private int turnNumber=-20;
+    private Gladiator activeGladiator;
+    private String logString = "";
+    final Handler timerHandler = new Handler();
+    Runnable timerWaitForTurnRunnable = new Runnable() {
+        @Override
+        public void run() {
+            getTurnsFromServer();
+            timerHandler.postDelayed(this, 2000);
+        }
+    };
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,6 +79,8 @@ public class GameActivity extends Activity {
         // Progress dialog
         pDialog = new ProgressDialog(this);
         pDialog.setCancelable(false);
+
+        timerHandler.removeCallbacks(timerWaitForTurnRunnable);
 
         gameView = (GameView) findViewById(R.id.game_view);
         queueView = (QueueView) findViewById(R.id.queue_view);
@@ -135,7 +148,7 @@ public class GameActivity extends Activity {
                             db.addGame(game);
                             isFirstPlayer = (user.getId().equals(game.getGamer1_id())) ? true : false;
                             getIntFields();
-                            getTurns(game.getId());
+                            getTurnsFromServer();
                             gladiators = db.getGladiatorsDetails();
                         }
                     }
@@ -159,10 +172,10 @@ public class GameActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
-    public void getTurns(final String gameId) {
+    public void getTurnsFromServer() {
         // Tag used to cancel the request
         String tag_string_req = "get_Game";
-        String uri = AppConfig.URL_TURNS + "/game/" + gameId + "/current/-12";
+        String uri = AppConfig.URL_TURNS + "/game/" + game.getId() + "/current/" + turnNumber;
         Log.i(TAG, uri);
         StringRequest strReq = new StringRequest(Method.GET,
                 uri, new Response.Listener<String>() {
@@ -193,16 +206,8 @@ public class GameActivity extends Activity {
                     gameView.drawField();
                     gameView.invalidate();
                     queueView.invalidate();
-                    Point point = getActivField();
 
-                    int host = field[point.getY()][point.getX()].getOwner();
-
-                    int temp = isFirstPlayer ? 1:2;
-                    if (!(temp == host))
-                    {
-                        pDialog.setMessage("Waiting for second player ...");
-                        showDialog();
-                    }
+                    getTextView().setText(logString);
                     //hideDialog();
                 }
                 catch (JSONException e) {
@@ -248,6 +253,93 @@ public class GameActivity extends Activity {
                 }
         }
     }
+
+    public void turnProcessing(String action, String value1, String value2, String value3)
+    {
+        Turn turn;
+        switch(action)
+        {
+            case "walk":
+
+
+                break;
+        }
+        String host = isFirstPlayer?"1":"2";
+        turn = new Turn (Integer.parseInt(game.getId()), turnNumber+1, host, action, value1, value2, value3, "", "");
+        turns.put(turn.getTurn(), turn);
+        gameView.prepareTurn();
+        gameView.drawField();
+        gameView.invalidate();
+        queueView.invalidate();
+
+        addTurn(turn);
+    }
+
+    /**
+     * function to add turn
+     * */
+    private void addTurn(final Turn turn) {
+        // Tag used to cancel the request
+        String tag_string_req = "req_addTurn";
+
+        StringRequest strReq = new StringRequest(Method.POST,
+                AppConfig.URL_TURNS, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Add Turn Response: " + response.toString());
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        //timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+
+                // Posting parameters to login url
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("gameid", new Integer(turn.getGamedid()).toString());
+                params.put("host", turn.getHost());
+                params.put("turn", new Integer(turn.getTurn()).toString());
+                params.put("action", turn.getAction());
+                params.put("value1", turn.getValue1());
+                params.put("value2", turn.getValue2());
+                params.put("value3", turn.getValue3());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
     private void showDialog() {
         if (!pDialog.isShowing())
             pDialog.show();
@@ -290,7 +382,7 @@ public class GameActivity extends Activity {
         isFirstPlayer = firstPlayer;
     }
 
-    public Map<Double, Point> getQueue() {
+    public TreeMap<Double, Point> getQueue() {
         return queue;
     }
 
@@ -305,6 +397,21 @@ public class GameActivity extends Activity {
             key = key + 0.000000000001;
         }
         this.queue.put(key, cell);
+
+        Point point = getActivField();
+        int host = field[point.getY()][point.getX()].getOwner();
+
+        int temp = isFirstPlayer ? 1:2;
+        if (!(temp == host))
+        {
+            pDialog.setMessage("Waiting for second player ...");
+            showDialog();
+            timerHandler.postDelayed(timerWaitForTurnRunnable, 0);
+        } else
+        {
+            hideDialog();
+            timerHandler.removeCallbacks(timerWaitForTurnRunnable);
+        }
     }
 
     public TextView getTextView() {
@@ -321,5 +428,39 @@ public class GameActivity extends Activity {
 
     public void setGladiators(List<Gladiator> gladiators) {
         this.gladiators = gladiators;
+    }
+
+
+    public int getTurnNumber() {
+        return turnNumber;
+    }
+
+    public void setTurnNumber(int turnNumber) {
+        this.turnNumber = turnNumber;
+    }
+
+    public Gladiator getActiveGladiator() {
+        return activeGladiator;
+    }
+
+    public void setActiveGladiator(Gladiator activeGladiator) {
+        this.activeGladiator = activeGladiator;
+    }
+
+    public String getLogString() {
+        return logString;
+    }
+
+    public void addLogString(String logString) {
+        this.logString += logString;
+    }
+
+    public Gladiator getGladiatorById(int id) {
+        for (Gladiator glad : gladiators) {
+            if (glad.getId() == id) {
+                return glad;
+            }
+        }
+        return null;
     }
 }
