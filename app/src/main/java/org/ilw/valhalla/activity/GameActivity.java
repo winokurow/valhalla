@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -206,8 +207,10 @@ public class GameActivity extends Activity {
                     gameView.drawField();
                     gameView.invalidate();
                     queueView.invalidate();
-
+                    Log.d("TAG", logString);
                     getTextView().setText(logString);
+                    Log.d("TAG", "Textfeld0 " + getTextView().getText());
+                    scrollInfo();
                     //hideDialog();
                 }
                 catch (JSONException e) {
@@ -463,4 +466,14 @@ public class GameActivity extends Activity {
         }
         return null;
     }
+public void scrollInfo() {
+    final ScrollView scroll = (ScrollView) this.findViewById(R.id.SCROLLER_ID);
+    scroll.post(new Runnable() {
+        @Override
+        public void run() {
+            scroll.fullScroll(ScrollView.FOCUS_DOWN);
+        }
+    });
+}
+
 }

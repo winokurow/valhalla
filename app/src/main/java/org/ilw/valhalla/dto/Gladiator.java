@@ -18,6 +18,8 @@ public class Gladiator {
     private int stamina_progress;
     private int mart_art;
     private int mart_art_progress;
+    private int health;
+    private int stamina_act;
     private String created_at;
     private String updated_at;
 
@@ -173,6 +175,22 @@ public class Gladiator {
         this.stamina_progress = stamina_progress;
     }
 
+    public int getHealth() {
+        return health;
+    }
+
+    public void setHealth(int health) {
+        this.health = health;
+    }
+
+    public int getStamina_act() {
+        return stamina_act;
+    }
+
+    public void setStamina_act(int stamina_act) {
+        this.stamina_act = stamina_act;
+    }
+
     public Gladiator(int id, int userid, String name, int str, int str_progress, int dex, int dex_progress, int spd, int spd_progress, int con, int con_progress, int intel, int intel_progress, int stamina, int stamina_progress, int mart_art, int mart_art_progress, String created_at, String updated_at) {
         this.id = id;
         this.userid = userid;
@@ -191,6 +209,8 @@ public class Gladiator {
         this.stamina_progress = stamina_progress;
         this.mart_art = mart_art;
         this.mart_art_progress = mart_art_progress;
+        health=con*5;
+        stamina_act=stamina*10;
         this.created_at = created_at;
         this.updated_at = updated_at;
     }

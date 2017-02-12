@@ -15,6 +15,7 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.widget.Toast;
 
 import org.ilw.valhalla.R;
 import org.ilw.valhalla.activity.GameActivity;
@@ -26,6 +27,7 @@ import org.ilw.valhalla.dto.Turn;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static android.graphics.Bitmap.createScaledBitmap;
 
@@ -105,13 +107,172 @@ public class GameView extends View {
                     {
                         TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
                         Point point = queue.firstEntry().getValue();
+                        field[point.getY()][point.getX()].setBlocked(false);
                         Gladiator gladiator = ((GameActivity) getContext()).getGladiatorById(field[point.getY()][point.getX()].getGladiator());
+                        // stamina calculation
+                        int stamina = gladiator.getStamina_act()+gladiator.getStamina()*2;
+                        stamina = (stamina>gladiator.getStamina()*10) ? gladiator.getStamina()*10:stamina;
+                        gladiator.setStamina_act(stamina);
 
                         queue.remove(queue.firstKey());
                         Double time = queue.firstKey();
                         ((GameActivity) getContext()).addQueue(time, point);
                         ((GameActivity) getContext()).setTurnNumber(value.getTurn());
                         ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " skipped turn\n");
+                        break;
+                    }
+                    case "block":
+                    {
+                        TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
+                        Point point = queue.firstEntry().getValue();
+                        field[point.getY()][point.getX()].setBlocked(true);
+                        Gladiator gladiator = ((GameActivity) getContext()).getGladiatorById(field[point.getY()][point.getX()].getGladiator());
+
+                        queue.remove(queue.firstKey());
+                        Double time = queue.firstKey();
+                        double spd = gladiator.getSpd()/5.00;
+                        time = time + 1 / spd;
+                        ((GameActivity) getContext()).addQueue(time, point);
+                        ((GameActivity) getContext()).setTurnNumber(value.getTurn());
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " set block\n");
+                        break;
+                    }
+                    case "getinfo":
+                    {
+                        TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
+                        Point point = queue.firstEntry().getValue();
+                        field[point.getY()][point.getX()].setBlocked(false);
+                        int xPos1 = Integer.parseInt(value.getValue1().split(";")[0]);
+                        int yPos1 = Integer.parseInt(value.getValue1().split(";")[1]);
+                        int xPos2 = Integer.parseInt(value.getValue2().split(";")[0]);
+                        int yPos2 = Integer.parseInt(value.getValue2().split(";")[1]);
+                        Gladiator gladiator2 = ((GameActivity) getContext()).getGladiatorById(field[yPos2][xPos2].getGladiator());
+                        Gladiator gladiator1 = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
+
+                        queue.remove(queue.firstKey());
+                        Double time = queue.firstKey();
+                        double intel = gladiator1.getIntel()/5.00;
+                        time = time + 0.2 / intel;
+                        ((GameActivity) getContext()).addQueue(time, point);
+                        ((GameActivity) getContext()).setTurnNumber(value.getTurn());
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator1.getName() + " got info for "+gladiator2.getName() + "\n");
+                        String info = logInfo(xPos2,yPos2, false);
+                        ((GameActivity) getContext()).addLogString(info + "\n");
+
+                        break;
+                    }
+                    case "kick":
+                    {
+                        TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
+                        Point point = queue.firstEntry().getValue();
+                        field[point.getY()][point.getX()].setBlocked(false);
+                        int xPos1 = Integer.parseInt(value.getValue1().split(";")[0]);
+                        int yPos1 = Integer.parseInt(value.getValue1().split(";")[1]);
+                        int xPos2 = Integer.parseInt(value.getValue2().split(";")[0]);
+                        int yPos2 = Integer.parseInt(value.getValue2().split(";")[1]);
+                        Gladiator gladiator2 = ((GameActivity) getContext()).getGladiatorById(field[yPos2][xPos2].getGladiator());
+                        Gladiator gladiator1 = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
+
+                        // health calculation
+                        int precision = Integer.parseInt(value.getValue3().split(";")[0]);
+                        int crit = Integer.parseInt(value.getValue3().split(";")[1]);
+                        int popad = gladiator1.getDex() - gladiator2.getDex() + precision - 3;
+                        int sila = 0;
+                        if (popad>0)
+                        {
+                            int defence = 0;
+                            if (field[yPos2][xPos2].isBlocked())
+                            {
+                                defence = 3;
+                            }
+                            sila = gladiator1.getStr() + crit - 6 - defence;
+                            if (sila>0)
+                            {
+                                gladiator2.setHealth(gladiator2.getHealth()-sila);
+                            }
+                        }
+                        // stamina calculation
+                        int stamina = gladiator1.getStamina_act()-2;
+                        stamina = (stamina<0) ? 0:stamina;
+                        gladiator1.setStamina_act(stamina);
+
+                        queue.remove(queue.firstKey());
+                        Double time = queue.firstKey();
+                        double speed = gladiator1.getSpd()/5.00;
+                        time = time + 1.2 / speed;
+                        ((GameActivity) getContext()).addQueue(time, point);
+                        ((GameActivity) getContext()).setTurnNumber(value.getTurn());
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator1.getName() + " kicked "+ gladiator2.getName() + "\n");
+                        if (popad>0) {
+                            if (sila>0)
+                            {
+                                ((GameActivity) getContext()).addLogString("    " + gladiator2.getName() + " was wounded. -" + sila + " HP" +  "\n");
+                            } else
+                            {
+                                ((GameActivity) getContext()).addLogString("    " + gladiator1.getName() + " kick was to light.\n");
+
+                            }
+                        } else
+                        {
+                            ((GameActivity) getContext()).addLogString("    " + gladiator2.getName() + " has dodged" + "\n");
+                        }
+                        break;
+                    }
+                    case "punch":
+                    {
+                        TreeMap<Double, Point> queue = ((GameActivity) getContext()).getQueue();
+                        Point point = queue.firstEntry().getValue();
+                        field[point.getY()][point.getX()].setBlocked(false);
+                        int xPos1 = Integer.parseInt(value.getValue1().split(";")[0]);
+                        int yPos1 = Integer.parseInt(value.getValue1().split(";")[1]);
+                        int xPos2 = Integer.parseInt(value.getValue2().split(";")[0]);
+                        int yPos2 = Integer.parseInt(value.getValue2().split(";")[1]);
+                        Gladiator gladiator2 = ((GameActivity) getContext()).getGladiatorById(field[yPos2][xPos2].getGladiator());
+                        Gladiator gladiator1 = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
+
+                        // health calculation
+                        int precision = Integer.parseInt(value.getValue3().split(";")[0]);
+                        int crit = Integer.parseInt(value.getValue3().split(";")[1]);
+                        int popad = gladiator1.getDex() - gladiator2.getDex() + precision - 3 - 2;
+                        int sila =0;
+                        if (popad>0)
+                        {
+                            int defence = 0;
+                            if (field[yPos2][xPos2].isBlocked())
+                            {
+                                defence = 1;
+                            }
+                            sila = gladiator1.getStr() + crit - 6 - defence + 2;
+                            if (sila>0)
+                            {
+                                gladiator2.setHealth(gladiator2.getHealth()-sila);
+                            }
+                        }
+                        // stamina calculation
+                        int stamina = gladiator1.getStamina_act()-4;
+                        stamina = (stamina<0) ? 0:stamina;
+                        gladiator1.setStamina_act(stamina);
+
+                        queue.remove(queue.firstKey());
+                        Double time = queue.firstKey();
+                        double speed = gladiator1.getSpd()/5.00;
+                        time = time + 0.8 / speed;
+                        ((GameActivity) getContext()).addQueue(time, point);
+                        ((GameActivity) getContext()).setTurnNumber(value.getTurn());
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator1.getName() + " punched "+ gladiator2.getName() + "\n");
+                        if (popad>0) {
+                            if (sila>0)
+                            {
+                                ((GameActivity) getContext()).addLogString("    " + gladiator2.getName() + " was wounded. -" + sila + " HP" +  "\n");
+                            } else
+                            {
+                                ((GameActivity) getContext()).addLogString("    " + gladiator1.getName() + " punch was to light.\n");
+
+                            }
+                        } else
+                        {
+                            ((GameActivity) getContext()).addLogString("    " + gladiator2.getName() + " has dodged" + "\n");
+                        }
                         break;
                     }
                     case "walk":
@@ -128,23 +289,24 @@ public class GameView extends View {
                         field[yPos2][xPos2].setGladiator(gladiator.getId());
                         field[yPos2][xPos2].setGladiatorDirection(field[yPos1][xPos1].getGladiatorDirection());
                         field[yPos2][xPos2].setOwner(field[yPos1][xPos1].getOwner());
+                        field[yPos2][xPos2].setBlocked(false);
 
                         field[yPos1][xPos1].setGladiator(-1);
                         field[yPos1][xPos1].setGladiatorDirection(-1);
                         field[yPos1][xPos1].setOwner(-1);
+                        field[yPos2][xPos2].setBlocked(false);
 
                         int speedMod = gladiator.getSpd();
-                        double dist = 1;
+                        double dist = 10;
                         if ((xPos1 != xPos2) && (yPos1 != yPos2))
                         {
-                            dist = 1.4;
+                            dist = 14;
                         }
 
                         double speed = (Terrain.fromId(field[yPos1][xPos1].getGround()).getSpeed() + Terrain.fromId(field[yPos2][xPos2].getGround()).getSpeed())/2;
                         speed = speed*speedMod/5;
-                        time = time + speed/dist;
+                        time = time + dist/speed;
                         Point point = queue.firstEntry().getValue();
-                        time = time+speed;
                         queue.remove(queue.firstKey());
 
                         ((GameActivity) getContext()).addQueue(time, new Point(xPos2, yPos2));
@@ -363,41 +525,7 @@ public class GameView extends View {
                     x = xLength - x - 1;
                     y = yLength - y - 1;
                 }
-
-                //Log.d("rer", new Boolean(((GameActivity) getContext()).isFirstPlayer()).toString());
-                StringBuffer text = new StringBuffer("Terrain:\n   ");
-                text.append(Terrain.fromId(field[y][x].getGround()).getDescription());
-                int temp = (((GameActivity) getContext()).isFirstPlayer()) ? 1:2;
-
-                if ((field[y][x].getGladiator() != -1) && (field[y][x].getOwner()==temp))
-                {
-                    for (Gladiator gladiator:((GameActivity) getContext()).getGladiators())
-                    {
-                        if (gladiator.getId() == field[y][x].getGladiator())
-                        {
-                            text.append("\nGladiator:");
-                            text.append("\n   Name: ");
-                            text.append(gladiator.getName());
-                            text.append("\n   Str: ");
-                            text.append(gladiator.getStr());
-                            text.append("   Dex: ");
-                            text.append(gladiator.getDex());
-                            text.append("\n   Spd: ");
-                            text.append(gladiator.getSpd());
-                            text.append("   Con: ");
-                            text.append(gladiator.getCon());
-                            text.append("\n   Int: ");
-                            text.append(gladiator.getIntel());
-                            text.append("   Stamina: ");
-                            text.append(gladiator.getStamina());
-                            text.append("\n   Martial Art: ");
-                            text.append(gladiator.getMart_art());
-                            break;
-                        }
-                    }
-                }
-                ((GameActivity) getContext()).getTextView().setText(text.toString());
-
+                logInfo(x,y, true);
                 return true;
             }
 
@@ -421,14 +549,29 @@ public class GameView extends View {
                 }
                 popup = new PopupMenu(getContext(), GameView.this);
                 Point point = new Point(((GameActivity) getContext()).getActivField().getX(),((GameActivity) getContext()).getActivField().getY());
+
+                int temp = (((GameActivity) getContext()).isFirstPlayer()) ? 1:2;
+                if ((field[y][x].getGladiator()!=-1) && (field[y][x].getOwner()!=temp))
+                {
+                    popup.getMenu().add(1, R.id.menu_getinfo, 1, "get info");
+                }
                 if ((y==point.getY()) && (x==point.getX())) {
                     popup.getMenu().add(1, R.id.menu_skip, 1, "skip");
+                    popup.getMenu().add(1, R.id.menu_block, 1, "block");
                 } else {
                     if ((Math.abs(point.getY()-y) <= 1) && (Math.abs(point.getX()-x) <= 1))
                     {
                         clickPoint = new Point(x,y);
                         if (field[y][x].getGladiator()==-1) {
                             popup.getMenu().add(1, R.id.menu_walk, 1, "walk");
+                        } else
+                        {
+                            if (field[y][x].getOwner()!=temp)
+                            {
+                                popup.getMenu().add(1, R.id.menu_kick, 1, "kick");
+                                popup.getMenu().add(1, R.id.menu_punch, 1, "punch");
+                            }
+
                         }
                     }
 
@@ -445,16 +588,44 @@ public class GameView extends View {
         // Setup menu item selection
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             public boolean onMenuItemClick(MenuItem item) {
+                Cell[][] field = ((GameActivity) getContext()).getField();
                 Point point = new Point(((GameActivity) getContext()).getActivField().getX(),((GameActivity) getContext()).getActivField().getY());
                 switch (item.getItemId()) {
                     case R.id.menu_skip:
                         ((GameActivity) getContext()).turnProcessing("skip", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "", "");
                         return true;
                     case R.id.menu_walk:
-
                         ((GameActivity) getContext()).turnProcessing("walk", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "" + clickPoint.getX() +";"+clickPoint.getY() + ";", "");
                         return true;
+                    case R.id.menu_block:
+                        ((GameActivity) getContext()).turnProcessing("block", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "", "");
+                        return true;
+                    case R.id.menu_getinfo:
+                        ((GameActivity) getContext()).turnProcessing("getinfo", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "" + clickPoint.getX() +";"+clickPoint.getY() + ";", "");
+                        return true;
+                    case R.id.menu_kick:
+                        Gladiator gladiator = ((GameActivity) getContext()).getGladiatorById(field[((GameActivity) getContext()).getActivField().getY()][((GameActivity) getContext()).getActivField().getX()].getGladiator());
+                        if (gladiator.getStamina_act()>4) {
+                            int randomNum1 = ThreadLocalRandom.current().nextInt(1, 10);
+                            int randomNum2 = ThreadLocalRandom.current().nextInt(1, 10);
+                            ((GameActivity) getContext()).turnProcessing("kick", "" + ((GameActivity) getContext()).getActivField().getX() + ";" + ((GameActivity) getContext()).getActivField().getY() + ";", "" + clickPoint.getX() + ";" + clickPoint.getY() + ";", "" + randomNum1 + ";" + randomNum2);
+                        } else {
+                            Toast.makeText(getContext(), "Can't make - Stamina is low!",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                        return true;
+                    case R.id.menu_punch:
+                        gladiator = ((GameActivity) getContext()).getGladiatorById(field[((GameActivity) getContext()).getActivField().getY()][((GameActivity) getContext()).getActivField().getX()].getGladiator());
+                        if (gladiator.getStamina_act()>2) {
+                        int randomNum1 = ThreadLocalRandom.current().nextInt(1, 10);
+                        int randomNum2 = ThreadLocalRandom.current().nextInt(1, 10);
+                            ((GameActivity) getContext()).turnProcessing("punch", "" +((GameActivity) getContext()).getActivField().getX() +";"+((GameActivity) getContext()).getActivField().getY() + ";", "" + clickPoint.getX() +";"+clickPoint.getY() + ";", ""+randomNum1+";"+randomNum2);
 
+                        } else {
+                            Toast.makeText(getContext(), "Can't make - Stamina is low!",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                            return true;
                     default:
                         return false;
                 }
@@ -463,4 +634,50 @@ public class GameView extends View {
         popup.show();
     }
 
+    public String logInfo(int x, int y, boolean isOwnerVerify)
+    {
+        Cell[][] field = ((GameActivity) getContext()).getField();
+
+        StringBuffer text = new StringBuffer("Terrain:\n   ");
+        text.append(Terrain.fromId(field[y][x].getGround()).getDescription());
+        int temp = (((GameActivity) getContext()).isFirstPlayer()) ? 1:2;
+        boolean isAllowed = true;
+        if (isOwnerVerify)
+        {
+            isAllowed = (field[y][x].getOwner()==temp);
+        }
+        if ((isAllowed) &&(field[y][x].getGladiator() != -1))
+        {
+            for (Gladiator gladiator:((GameActivity) getContext()).getGladiators())
+            {
+                if (gladiator.getId() == field[y][x].getGladiator())
+                {
+                    text.append("\nGladiator:");
+                    text.append("\n   Name: ");
+                    text.append(gladiator.getName());
+                    text.append("\n   Health Level: ");
+                    text.append(gladiator.getHealth());
+                    text.append("   Stamina Level: ");
+                    text.append(gladiator.getStamina_act());
+                    text.append("\n   Str: ");
+                    text.append(gladiator.getStr());
+                    text.append("   Dex: ");
+                    text.append(gladiator.getDex());
+                    text.append("\n   Spd: ");
+                    text.append(gladiator.getSpd());
+                    text.append("   Con: ");
+                    text.append(gladiator.getCon());
+                    text.append("\n   Int: ");
+                    text.append(gladiator.getIntel());
+                    text.append("   Stamina: ");
+                    text.append(gladiator.getStamina());
+                    text.append("\n   Martial Art: ");
+                    text.append(gladiator.getMart_art());
+                    break;
+                }
+            }
+        }
+        ((GameActivity) getContext()).getTextView().setText(text.toString());
+        return text.toString();
+    }
 }

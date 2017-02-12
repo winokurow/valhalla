@@ -201,7 +201,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
             values.put(KEY_GLADIATOR_DEX_PROGRESS, gladiator.getDex_progress());
             values.put(KEY_GLADIATOR_SPD_PROGRESS, gladiator.getSpd_progress());
             values.put(KEY_GLADIATOR_CON_PROGRESS, gladiator.getCon_progress());
-            values.put(KEY_GLADIATOR_INT_PROGRESS, gladiator.getCon_progress());
+            values.put(KEY_GLADIATOR_INT_PROGRESS, gladiator.getIntel_progress());
             values.put(KEY_GLADIATOR_STAMINA_PROGRESS, gladiator.getCon_progress());
             values.put(KEY_GLADIATOR_MART_ART_PROGRESS, gladiator.getMart_art_progress());
             values.put(KEY_CREATED_AT, gladiator.getCreated_at()); // Created At

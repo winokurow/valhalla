@@ -5,7 +5,35 @@
         android:title="skip"
         android:visible="true"/>
     <item
+        android:id="@+id/menu_block"
+        android:title="block"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_getinfo"
+        android:title="get info"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_kick"
+        android:title="kick"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_punch"
+        android:title="punch"
+        android:visible="true"/>
+    <item
         android:id="@+id/menu_walk"
         android:title="walk"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_run"
+        android:title="run"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_turnlinks"
+        android:title="turn links"
+        android:visible="true"/>
+    <item
+        android:id="@+id/menu_turnright"
+        android:title="turn right"
         android:visible="true"/>
 </menu>

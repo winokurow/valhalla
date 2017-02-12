@@ -9,7 +9,7 @@ public class Cell {
     private int gladiator = -1;
     private int gladiatorDirection;
     private int owner  = -1;
-
+    private boolean isBlocked  = false;
     public Cell() {
     }
 
@@ -49,5 +49,13 @@ public class Cell {
 
     public void setGladiatorDirection(int gladiatorDirection) {
         this.gladiatorDirection = gladiatorDirection;
+    }
+
+    public boolean isBlocked() {
+        return isBlocked;
+    }
+
+    public void setBlocked(boolean blocked) {
+        isBlocked = blocked;
     }
 }
