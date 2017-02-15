@@ -29,7 +29,7 @@
         android:title="run"
         android:visible="true"/>
     <item
-        android:id="@+id/menu_turnlinks"
+        android:id="@+id/menu_turnleft"
         android:title="turn links"
         android:visible="true"/>
     <item

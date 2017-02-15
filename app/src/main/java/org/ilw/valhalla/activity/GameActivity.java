@@ -2,15 +2,24 @@ package org.ilw.valhalla.activity;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.Button;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -64,18 +73,33 @@ public class GameActivity extends Activity {
     private int turnNumber=-20;
     private Gladiator activeGladiator;
     private String logString = "";
+    public boolean isLocked;
+    int gladcountGamer1;
+    int gladcountGamer2;
+    PopupWindow popupWindow;
+    TextView textOut;
+
     final Handler timerHandler = new Handler();
     Runnable timerWaitForTurnRunnable = new Runnable() {
         @Override
         public void run() {
-            getTurnsFromServer();
+            if (!(isLocked))
+            {
+                getTurnsFromServer();
+            }
             timerHandler.postDelayed(this, 2000);
         }
     };
+
+    public Context getContext() {
+        return (Context)this;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
+
 
         // Progress dialog
         pDialog = new ProgressDialog(this);
@@ -174,6 +198,7 @@ public class GameActivity extends Activity {
     }
 
     public void getTurnsFromServer() {
+        isLocked = true;
         // Tag used to cancel the request
         String tag_string_req = "get_Game";
         String uri = AppConfig.URL_TURNS + "/game/" + game.getId() + "/current/" + turnNumber;
@@ -207,10 +232,10 @@ public class GameActivity extends Activity {
                     gameView.drawField();
                     gameView.invalidate();
                     queueView.invalidate();
-                    Log.d("TAG", logString);
                     getTextView().setText(logString);
-                    Log.d("TAG", "Textfeld0 " + getTextView().getText());
                     scrollInfo();
+                    gameEndVerification();
+                    isLocked = false;
                     //hideDialog();
                 }
                 catch (JSONException e) {
@@ -259,6 +284,7 @@ public class GameActivity extends Activity {
 
     public void turnProcessing(String action, String value1, String value2, String value3)
     {
+        isLocked = true;
         Turn turn;
         switch(action)
         {
@@ -274,8 +300,11 @@ public class GameActivity extends Activity {
         gameView.drawField();
         gameView.invalidate();
         queueView.invalidate();
-
+        getTextView().setText(logString);
+        scrollInfo();
+        gameEndVerification();
         addTurn(turn);
+        isLocked = false;
     }
 
     /**
@@ -343,6 +372,333 @@ public class GameActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
+    /**
+     * function to add turn
+     * */
+    private void gameEndVerification() {
+        if ((gladcountGamer1==0) || (gladcountGamer2==0))
+        {
+            timerHandler.removeCallbacks(timerWaitForTurnRunnable);
+            endGame();
+        }
+    }
+
+    /**
+     * method to end game
+     * */
+    private void endGame() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_endGame";
+
+        pDialog.setMessage("Ending Game ...");
+        showDialog();
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "End Game Response: " + response.toString());
+                hideDialog();
+
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+
+                        boolean isWin = true;
+                        if ((gladcountGamer1==0) && (isFirstPlayer)) {
+                            isWin = false;
+                        }
+                        if ((gladcountGamer2==0) && (!(isFirstPlayer))) {
+                            isWin = false;
+                        }
+
+                        String text = "You won!";
+                        if (!(isWin)) {
+                            text = "You lose!";
+                        }
+
+                        if (isWin)
+                        {
+                            if ((turnNumber>9) && (turnNumber<=18)) {
+                                user.setPoints(user.getPoints() + turnNumber-18);
+                                text += "\nYou have " + (turnNumber-18) + "more fans";
+                            }
+                        }
+                        for (Gladiator gladiator:gladiators)
+                        {
+                            if (gladiator.getUserid() == new Integer(user.getId()))
+                            {
+                                String text1 = "";
+                                if (gladiator.getStr_progress()>(int)Math. pow(2, gladiator.getStr()))
+                                {
+                                    text1 +="\nStrength +1";
+                                    gladiator.setStr_progress(0);
+                                    gladiator.setStr(gladiator.getStr()+1);
+                                }
+                                if (gladiator.getIntel_progress()>(int)Math. pow(2, gladiator.getIntel()))
+                                {
+                                    text1 +="\nIntellect +1";
+                                    gladiator.setIntel_progress(0);
+                                    gladiator.setIntel(gladiator.getIntel()+1);
+                                }
+                                if (gladiator.getSpd_progress()>(int)Math. pow(2, gladiator.getSpd()))
+                                {
+                                    text1 +="\nSpeed +1";
+                                    gladiator.setSpd_progress(0);
+                                    gladiator.setSpd(gladiator.getSpd()+1);
+                                }
+                                if (gladiator.getDex_progress()>(int)Math. pow(2, gladiator.getDex()))
+                                {
+                                    text1 +="\nDexterity +1";
+                                    gladiator.setDex_progress(0);
+                                    gladiator.setDex(gladiator.getDex()+1);
+                                }
+                                if (gladiator.getStamina_progress()>(int)Math. pow(2, gladiator.getStamina()))
+                                {
+                                    text1 +="\nStamina +1";
+                                    gladiator.setStamina_progress(0);
+                                    gladiator.setStamina(gladiator.getStamina()+1);
+                                }
+                                if (gladiator.getCon_progress()>(int)Math. pow(2, gladiator.getCon()))
+                                {
+                                    text1 +="\nConstitution +1";
+                                    gladiator.setCon_progress(0);
+                                    gladiator.setCon(gladiator.getCon()+1);
+                                }
+                                if (gladiator.getMart_art()>(int)Math. pow(2, gladiator.getMart_art()*5))
+                                {
+                                    text1 +="\nMartial arts +1";
+                                    gladiator.setMart_art_progress(0);
+                                    gladiator.setMart_art(gladiator.getMart_art()+1);
+                                }
+
+                                if (!(text1.isEmpty()))
+                                {
+                                    text1 = "\n" + gladiator.getName() + text1;
+                                }
+                                text += text1;
+                            }
+                        }
+
+
+
+                        //Update TextView in PopupWindow dynamically
+                        LayoutInflater layoutInflater =
+                                (LayoutInflater)getBaseContext()
+                                        .getSystemService(LAYOUT_INFLATER_SERVICE);
+                        View popupView = layoutInflater.inflate(R.layout.popup, null);
+                        popupWindow = new PopupWindow(
+                                popupView, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+                        textOut = (TextView)popupView.findViewById(R.id.textout);
+
+                        Button btnDismiss = (Button)popupView.findViewById(R.id.dismiss);
+
+                        btnDismiss.setOnClickListener(new Button.OnClickListener(){
+
+                            @Override
+                            public void onClick(View v) {
+                                updateGladiator(0);
+
+                            }});
+
+                        textOut.setText(text);
+
+                        popupWindow.showAtLocation(gameView, Gravity.CENTER, 0, 0);
+                    } else {
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("uiid", game.getId());
+                params.put("status", "ENDED");
+                params.put("userid", user.getId());
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    /**
+     * method to end game
+     * */
+    private void updateGladiator(int start) {
+        // Tag used to cancel the request
+        String tag_string_req = "req_updateGladiator";
+        if (start == gladiators.size())
+        {
+            updateUser();
+            return;
+        }
+        for (int i=start;i<gladiators.size();i++) {
+
+            if (gladiators.get(i).getUserid() == new Integer(user.getId())) {
+                final int count = i;
+                StringRequest strReq = new StringRequest(Request.Method.PUT,
+                        AppConfig.URL_GLADIATOR, new Response.Listener<String>() {
+
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d(TAG, "End Game Response: " + response.toString());
+                        hideDialog();
+
+                        try {
+                            JSONObject jObj = new JSONObject(response);
+                            boolean error = jObj.getBoolean("error");
+
+                            // Check for error node in json
+                            if (!error) {
+                                updateGladiator(count + 1);
+                                return;
+                            } else {
+                                String errorMsg = jObj.getString("error_msg");
+                                Toast.makeText(getApplicationContext(),
+                                        errorMsg, Toast.LENGTH_LONG).show();
+                            }
+                        } catch (JSONException e) {
+                            // JSON error
+                            e.printStackTrace();
+                            Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+
+                    }
+                }, new Response.ErrorListener() {
+
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e(TAG, "Login Error: " + error.getMessage());
+                        Toast.makeText(getApplicationContext(),
+                                error.getMessage(), Toast.LENGTH_LONG).show();
+                        hideDialog();
+                    }
+                }) {
+
+                    @Override
+                    protected Map<String, String> getParams() {
+                        Map<String, String> params = new HashMap<String, String>();
+                        params.put("id", "" + gladiators.get(count).getId());
+                        params.put("name", "" + gladiators.get(count).getName());
+                        params.put("str", "" + gladiators.get(count).getStr());
+                        params.put("str_progress", "" + gladiators.get(count).getStr_progress());
+                        params.put("dex", "" + gladiators.get(count).getDex());
+                        params.put("dex_progress", "" + gladiators.get(count).getDex_progress());
+                        params.put("spd", "" + gladiators.get(count).getSpd());
+                        params.put("spd_progress", "" + gladiators.get(count).getSpd_progress());
+                        params.put("con", "" + gladiators.get(count).getCon());
+                        params.put("con_progress", "" + gladiators.get(count).getCon_progress());
+                        params.put("int", "" + gladiators.get(count).getIntel());
+                        params.put("int_progress", "" + gladiators.get(count).getIntel_progress());
+                        params.put("stamina", "" + gladiators.get(count).getStamina());
+                        params.put("stamina_progress", "" + gladiators.get(count).getStamina_progress());
+                        params.put("mart_art", "" + gladiators.get(count).getMart_art());
+                        params.put("mart_art_progress", "" + gladiators.get(count).getMart_art_progress());
+                        return params;
+                    }
+
+                };
+
+                // Adding request to request queue
+                AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+
+                break;
+            }
+        }
+    }
+
+    /**
+     * method to end game
+     * */
+    private void updateUser() {
+        // Tag used to cancel the request
+        String tag_string_req = "req_updateUser";
+
+                StringRequest strReq = new StringRequest(Request.Method.PUT,
+                        AppConfig.URL_USER, new Response.Listener<String>() {
+
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d(TAG, "End Game Response: " + response.toString());
+                        hideDialog();
+
+                        try {
+                            JSONObject jObj = new JSONObject(response);
+                            boolean error = jObj.getBoolean("error");
+
+                            // Check for error node in json
+                            if (!error) {
+                                closeDialog();
+                                db.deleteCells();
+                                db.deleteCells();
+                                db.deleteGladiators();
+                                db.deleteTurns();
+                                Intent i = new Intent(getApplicationContext(),
+                                        MainActivity.class);
+                                startActivity(i);
+                                finish();
+                            } else {
+                                String errorMsg = jObj.getString("error_msg");
+                                Toast.makeText(getApplicationContext(),
+                                        errorMsg, Toast.LENGTH_LONG).show();
+                            }
+                        } catch (JSONException e) {
+                            // JSON error
+                            e.printStackTrace();
+                            Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+
+                    }
+                }, new Response.ErrorListener() {
+
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e(TAG, "Login Error: " + error.getMessage());
+                        Toast.makeText(getApplicationContext(),
+                                error.getMessage(), Toast.LENGTH_LONG).show();
+                        hideDialog();
+                    }
+                }) {
+
+                    @Override
+                    protected Map<String, String> getParams() {
+                        Map<String, String> params = new HashMap<String, String>();
+                        params.put("uiid", "" + user.getId());
+                        params.put("points", "" + user.getPoints());
+                        params.put("level", "" + user.getLevel());
+                        return params;
+                    }
+
+                };
+
+                // Adding request to request queue
+                AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
     private void showDialog() {
         if (!pDialog.isShowing())
             pDialog.show();
@@ -351,6 +707,11 @@ public class GameActivity extends Activity {
     private void hideDialog() {
         if (pDialog.isShowing())
             pDialog.dismiss();
+    }
+
+    private void closeDialog() {
+        if (popupWindow.isShowing())
+            popupWindow.dismiss();
     }
 
     public Map<Integer, Turn> getTurns() {
@@ -476,4 +837,19 @@ public void scrollInfo() {
     });
 }
 
+    public int getGladcountGamer1() {
+        return gladcountGamer1;
+    }
+
+    public void setGladcountGamer1(int gladcountGamer1) {
+        this.gladcountGamer1 = gladcountGamer1;
+    }
+
+    public int getGladcountGamer2() {
+        return gladcountGamer2;
+    }
+
+    public void setGladcountGamer2(int gladcountGamer2) {
+        this.gladcountGamer2 = gladcountGamer2;
+    }
 }
