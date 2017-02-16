@@ -10,6 +10,7 @@ import android.graphics.RectF;
 import android.support.v7.widget.PopupMenu;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static android.content.ContentValues.TAG;
 import static android.graphics.Bitmap.createScaledBitmap;
 
 public class GameView extends View {
@@ -170,7 +172,7 @@ public class GameView extends View {
                         time = time + 2 / spd;
                         ((GameActivity) getContext()).addQueue(time, point);
                         ((GameActivity) getContext()).setTurnNumber(value.getTurn());
-                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " set block\n");
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " turned right\n");
                         break;
                     }
                     case "turnleft":
@@ -190,7 +192,7 @@ public class GameView extends View {
                         time = time + 2 / spd;
                         ((GameActivity) getContext()).addQueue(time, point);
                         ((GameActivity) getContext()).setTurnNumber(value.getTurn());
-                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " set block\n");
+                        ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator.getName() + " turned left\n");
                         break;
                     }
                     case "getinfo":
@@ -232,9 +234,17 @@ public class GameView extends View {
                         Gladiator gladiator1 = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
 
                         // health calculation
+                        int orientBonus=getKickDirectionBonus(new Point(xPos1,yPos1), new Point(xPos2,yPos2), field[yPos1][xPos1].getGladiatorDirection());
+
                         int precision = Integer.parseInt(value.getValue3().split(";")[0]);
                         int crit = Integer.parseInt(value.getValue3().split(";")[1]);
                         int popad = gladiator1.getDex() - gladiator2.getDex() + precision - 3;
+                        if (orientBonus==2) {
+                            popad-=2;
+                        }
+                        if (orientBonus==3) {
+                            popad-=1;
+                        }
                         int sila = 0;
                         int health = gladiator2.getHealth();
                         if (popad>0)
@@ -245,6 +255,7 @@ public class GameView extends View {
                                 defence = 3;
                             }
                             sila = gladiator1.getStr() + crit - 6 - defence;
+                            sila = new Double (sila*0.25*orientBonus).intValue();
 
                             if (sila>0)
                             {
@@ -337,17 +348,29 @@ public class GameView extends View {
                         Gladiator gladiator1 = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
 
                         // health calculation
+                        int orientBonus=getKickDirectionBonus(new Point(xPos1,yPos1), new Point(xPos2,yPos2), field[yPos1][xPos1].getGladiatorDirection());
+
                         int precision = Integer.parseInt(value.getValue3().split(";")[0]);
                         int crit = Integer.parseInt(value.getValue3().split(";")[1]);
-                        int popad = gladiator1.getDex() - gladiator2.getDex() + precision - 3 - 2;
+                        int popad = (gladiator1.getDex()) - gladiator2.getDex() + precision - 3 - 2;
+                        if (orientBonus==2) {
+                            popad-=2;
+                        }
+                        if (orientBonus==3) {
+                            popad-=1;
+                        }
                         int sila = 0;
                         int health = gladiator2.getHealth();
+
                         if (popad > 0) {
                             int defence = 0;
                             if (field[yPos2][xPos2].isBlocked()) {
                                 defence = 1;
                             }
                             sila = gladiator1.getStr() + crit - 6 - defence + 2;
+                            sila = new Double (sila*0.25*orientBonus).intValue();
+                            Log.d(TAG, new Integer(getKickDirectionBonus(new Point(xPos1,yPos1), new Point(xPos2,yPos2), field[yPos1][xPos1].getGladiatorDirection())).toString());
+
                             if (sila > 0) {
                                 health -= sila;
                                 gladiator2.setHealth(health);
@@ -453,6 +476,9 @@ public class GameView extends View {
 
                         double speed = (Terrain.fromId(field[yPos1][xPos1].getGround()).getSpeed() + Terrain.fromId(field[yPos2][xPos2].getGround()).getSpeed())/2;
                         speed = speed*speedMod/5;
+
+                        speed = speed*0.25*getMovementOrientationBonus(new Point(xPos1,yPos1), new Point(xPos2,yPos2), field[yPos2][xPos2].getGladiatorDirection());
+                        Log.d(TAG, new Integer(getMovementOrientationBonus(new Point(xPos1,yPos1), new Point(xPos2,yPos2), field[yPos2][xPos2].getGladiatorDirection())).toString());
                         time = time + dist/speed;
 
                         Point point = queue.firstEntry().getValue();
@@ -494,6 +520,8 @@ public class GameView extends View {
 
                         double speed = (Terrain.fromId(field[yPos1][xPos1].getGround()).getSpeed() + Terrain.fromId(field[yPos2][xPos2].getGround()).getSpeed())/2;
                         speed = 2*speed*speedMod/5;
+                        speed = speed*0.25*getMovementOrientationBonus(new Point(xPos1,yPos1), new Point(xPos2,yPos2), field[yPos2][xPos2].getGladiatorDirection());
+
                         time = time + dist/speed;
 
                         // stamina calculation
@@ -631,6 +659,12 @@ public class GameView extends View {
                         paint.setAntiAlias(true);
                         paint.setFilterBitmap(true);
                         mCanvas.drawBitmap(bmp1, x0, y0, paint);
+                        bmp = ((GameActivity) getContext()).getmStore().get(String.format("pants_%s", direction));
+                        bmp1 = createScaledBitmap(bmp, (int) (bmp.getWidth() * 1.5), (int) (bmp.getHeight() * 1.5), false);
+                        paint = new Paint();
+                        paint.setAntiAlias(true);
+                        paint.setFilterBitmap(true);
+                        mCanvas.drawBitmap(bmp1, x0+50, y0+100, paint);
                     }
                 }
             }
@@ -771,7 +805,7 @@ public class GameView extends View {
                             popup.getMenu().add(1, R.id.menu_walk, 1, "run");
                         } else
                         {
-                            if (field[y][x].getOwner()!=temp)
+                            if ((field[y][x].getOwner()!=temp) && (isInDirection(clickPoint,point, field[point.getY()][point.getX()].getGladiatorDirection())))
                             {
                                 popup.getMenu().add(1, R.id.menu_kick, 1, "kick");
                                 popup.getMenu().add(1, R.id.menu_punch, 1, "punch");
@@ -899,5 +933,114 @@ public class GameView extends View {
         }
         ((GameActivity) getContext()).getTextView().setText(text.toString());
         return text.toString();
+    }
+
+    public boolean isInDirection(Point clickpoint, Point gladpoint, int orentation)
+    {
+        boolean returnValue = false;
+        switch(orentation)
+        {
+            case 1:
+                returnValue = clickpoint.getY()<gladpoint.getY();
+                break;
+            case 3:
+                returnValue = clickpoint.getY()>gladpoint.getY();
+                break;
+            case 2:
+                returnValue = clickpoint.getX()>gladpoint.getX();
+                break;
+            case 4:
+                returnValue = clickpoint.getX()<gladpoint.getX();
+                break;
+        }
+        return returnValue;
+    }
+
+    public int getMovementOrientationBonus(Point startpoint, Point endpoint, int orientation)
+    {
+        int dx=startpoint.getX()-endpoint.getX();
+        int dy=startpoint.getY()-endpoint.getY();
+
+        int returnValue = 0;
+        switch(orientation)
+        {
+            case 1:
+                if (dy>0) {
+                    return 4;
+                }
+                if (dy<0) {
+                    return 2;
+                }
+                return 3;
+            case 3:
+                if (dy<0) {
+                    return 4;
+                }
+                if (dy>0) {
+                    return 2;
+                }
+                return 3;
+            case 2:
+                if (dx<0) {
+                    return 4;
+                }
+                if (dx>0) {
+                    return 2;
+                }
+                return 3;
+            case 4:
+                if (dx>0) {
+                    return 4;
+                }
+                if (dx<0) {
+                    return 2;
+                }
+                return 3;
+        }
+        return 1;
+    }
+
+    public int getKickDirectionBonus(Point startpoint, Point endpoint, int orientation)
+    {
+        int dx=startpoint.getX()-endpoint.getX();
+        int dy=startpoint.getY()-endpoint.getY();
+
+        int returnValue = 0;
+        switch(orientation)
+        {
+            case 1:
+                if (dx>0) {
+                    return 2;
+                }
+                if (dx<0) {
+                    return 3;
+                }
+                return 4;
+            case 3:
+                if (dx<0) {
+                    return 2;
+                }
+                if (dx>0) {
+                    return 3;
+                }
+                return 4;
+            case 2:
+                if (dy<0) {
+                    return 2;
+                }
+                if (dy>0) {
+                    return 3;
+                }
+                return 4;
+            case 4:
+                if (dy>0) {
+                    return 2;
+                }
+                if (dy<0) {
+                    return 3;
+                }
+                return 4;
+        }
+        return 1;
     }
 }

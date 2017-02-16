@@ -99,6 +99,9 @@ public class PrepareActivity extends Activity {
         Bitmap bmp = BitmapFactory.decodeResource(getResources(),
                 R.drawable.man);
         mStore.put("glad1", bmp);
+        bmp = BitmapFactory.decodeResource(getResources(),
+                R.drawable.pants_1);
+        mStore.put("pants_1", bmp);
         db = new SQLiteHandler(getApplicationContext());
         user = db.getUserDetails();
         game = db.getGameDetails();

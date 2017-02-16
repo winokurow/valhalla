@@ -143,6 +143,19 @@ public class GameActivity extends Activity {
         bmp = BitmapFactory.decodeResource(getResources(),
                 R.drawable.man_2_4);
         mStore.put("glad2_4", bmp);
+        bmp = BitmapFactory.decodeResource(getResources(),
+                R.drawable.pants_1);
+        mStore.put("pants_1", bmp);
+        bmp = BitmapFactory.decodeResource(getResources(),
+                R.drawable.pants_2);
+        mStore.put("pants_2", bmp);
+        bmp = BitmapFactory.decodeResource(getResources(),
+                R.drawable.pants_3);
+        mStore.put("pants_3", bmp);
+        bmp = BitmapFactory.decodeResource(getResources(),
+                R.drawable.pants_4);
+        mStore.put("pants_4", bmp);
+
     }
 
     public void getGame(final String uuid) {

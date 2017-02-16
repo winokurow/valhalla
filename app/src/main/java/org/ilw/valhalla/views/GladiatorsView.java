@@ -19,6 +19,8 @@ import org.ilw.valhalla.dto.Point;
 import java.util.List;
 import java.util.Map;
 
+import static android.R.attr.direction;
+
 public class GladiatorsView extends View {
 
     private Bitmap mBitmap;
@@ -78,6 +80,8 @@ public class GladiatorsView extends View {
                     Bitmap bmp = null;
                     bmp = ((PrepareActivity) getContext()).getmStore().get("glad1");
                     mCanvas.drawBitmap(bmp, i * canvasSize / 5 + 20, canvasY1Size + 20, null);
+                    bmp = ((PrepareActivity) getContext()).getmStore().get(String.format("pants_1", direction));
+                    mCanvas.drawBitmap(bmp, i * canvasSize / 5 + 52, canvasY1Size + 95, paint);
                     if ((active > -1) && (active < gladiators.size())) {
                         Paint paint2 = new Paint();
                         paint2.setStyle(Paint.Style.FILL);

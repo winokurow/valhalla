@@ -75,13 +75,14 @@ public class QueueView extends View {
             int owner = field[entry.getValue().getY()][entry.getValue().getX()].getOwner();
             Bitmap bmp = ((GameActivity) getContext()).getmStore().get(String.format("glad%s_%s",owner, direction));
             mCanvas.drawBitmap(bmp, i * canvasSize / 5 + 20, canvasY1Size + 20, null);
+            bmp = ((GameActivity) getContext()).getmStore().get(String.format("pants_%s", direction));
+            mCanvas.drawBitmap(bmp, i * canvasSize / 5 + 52, canvasY1Size + 95, paint);
             if (i==4)
             {
                 break;
             }
             i++;
         }
-
 
         canvas.drawBitmap(mBitmap, 0, 0, mBitmapPaint);
     }

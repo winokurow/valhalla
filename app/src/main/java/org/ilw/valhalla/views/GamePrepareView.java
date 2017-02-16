@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import static android.R.attr.direction;
 import static android.graphics.Bitmap.createScaledBitmap;
 
 public class GamePrepareView extends View {
@@ -124,7 +125,6 @@ public class GamePrepareView extends View {
                 float x2 = (activePoint.getX()+1) * canvasSize / xLength;
                 float y1 = activePoint.getY() * canvasSize / yLength;
                 float y2 = (activePoint.getY()+1) * canvasSize / yLength;
-                Log.d("TAG", new Float(x1).toString() +  " " + new Float(x2).toString() + new Float(y1).toString() +  " " + new Float(y2).toString());
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(Color.YELLOW);
                 mCanvas.drawRect(x1, y1, x2, y2, paint);
@@ -148,6 +148,12 @@ public class GamePrepareView extends View {
                     paint.setAntiAlias(true);
                     paint.setFilterBitmap(true);
                     mCanvas.drawBitmap(bmp1, x0, y0, paint);
+                    bmp = ((PrepareActivity) getContext()).getmStore().get(String.format("pants_1", direction));
+                    bmp1 = createScaledBitmap(bmp, (int) (bmp.getWidth() * 1.5), (int) (bmp.getHeight() * 1.5), false);
+                    paint = new Paint();
+                    paint.setAntiAlias(true);
+                    paint.setFilterBitmap(true);
+                    mCanvas.drawBitmap(bmp1, x0+50, y0+100, paint);
                 }
             }
         }
