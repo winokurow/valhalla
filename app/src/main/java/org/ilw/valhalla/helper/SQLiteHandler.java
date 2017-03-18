@@ -174,7 +174,7 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         values.put(KEY_GAME_GAMER2NAME, game.getGamer2_name());
         values.put(KEY_GAME_GAMER2POINTS, game.getGamer2_points());
         values.put(KEY_GAME_STATUS, game.getStatus()); // Status
-        values.put(KEY_GAME_FIELD, game.getField()); // Points
+        values.put(KEY_GAME_FIELD, game.getField()); // Field
         values.put(KEY_CREATED_AT, game.getCreated_at()); // Created At
         values.put(KEY_UPDATED_AT, game.getUpdated_at()); // Updated At
 
@@ -268,7 +268,6 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         Log.d(TAG, "Update game in sqlite");
     }
 
-
     /**
      * Getting game data from database
      * */
@@ -281,8 +280,6 @@ public class SQLiteHandler extends SQLiteOpenHelper {
         cursor.moveToFirst();
         Game game = null;
         if (cursor.getCount() > 0) {
-            Log.d(TAG, "1"+cursor.getString(0));
-            Log.d(TAG, "2"+cursor.getString(1));
             game = new Game(cursor.getString(0), cursor.getString(1),cursor.getString(2),cursor.getInt(3),cursor.getString(4),cursor.getString(5),cursor.getInt(6),cursor.getString(7),cursor.getString(8),cursor.getString(9),cursor.getString(10));
             // return game
             Log.d(TAG, "Fetching game from Sqlite: " + game.toString());

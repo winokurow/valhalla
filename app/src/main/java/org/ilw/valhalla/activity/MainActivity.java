@@ -16,6 +16,7 @@ import android.widget.LinearLayout.LayoutParams;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
@@ -67,14 +68,14 @@ public class MainActivity extends Activity {
     private User user = null;
     private boolean isReady;
     private boolean isShown;
-
-
+    private int mode;
     private int active;
 
     final Handler timerHandler = new Handler();
     Runnable timerRefreshGamesRunnable = new Runnable() {
         @Override
         public void run() {
+
             getGames(GameStatus.WAITING.asString());
             timerHandler.postDelayed(this, 10000);
         }
@@ -113,8 +114,6 @@ public class MainActivity extends Activity {
         session = new SessionManager(getApplicationContext());
 
         if (!session.isLoggedIn()) {
-            timerHandler.removeCallbacks(timerRefreshGamesRunnable);
-            timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
             logoutUser();
         }
 
@@ -133,12 +132,14 @@ public class MainActivity extends Activity {
         btnAddNewGame.setOnClickListener(new View.OnClickListener() {
 
             public void onClick(View view) {
+                pDialog.setMessage("Adding Game ...");
+                showDialog();
                 addNewGame(user.getId());
             }
         });
 
-            // Logout button click event
-            btnLogout.setOnClickListener(new View.OnClickListener() {
+        // Logout button click event
+        btnLogout.setOnClickListener(new View.OnClickListener() {
 
                 @Override
                 public void onClick(View v) {
@@ -146,7 +147,9 @@ public class MainActivity extends Activity {
                 }
             });
 
-            this.getGame(user.getId());
+        pDialog.setMessage("Loading ...");
+        showDialog();
+        this.getGame(user.getId());
 
     }
     private void removeWaitView() {
@@ -162,8 +165,7 @@ public class MainActivity extends Activity {
      * preferences Clears the user data from sqlite users table
      * */
     private void logoutUser() {
-        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
-        timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+        setMode(3);
 
         session.setLogin(false);
 
@@ -181,17 +183,13 @@ public class MainActivity extends Activity {
     private void addNewGame(final String user) {
         // Tag used to cancel the request
         String tag_string_req = "req_addNewGame";
-
-        pDialog.setMessage("Adding Game ...");
-        showDialog();
-
+        setMode(2);
         StringRequest strReq = new StringRequest(Request.Method.POST,
                 AppConfig.URL_CREATENEWGAME, new Response.Listener<String>() {
 
             @Override
             public void onResponse(String response) {
                 Log.d(TAG, "Create New Game Response: " + response.toString());
-                hideDialog();
 
                 try {
                     JSONObject jObj = new JSONObject(response);
@@ -199,17 +197,18 @@ public class MainActivity extends Activity {
 
                     // Check for error node in json
                     if (!error) {
+
                         // Now store the game in SQLite
                         JSONObject userReq = jObj.getJSONObject("data");
                         Gson gson = new GsonBuilder().create();
                         Game game = gson.fromJson(userReq.toString(), Game.class);
 
                         // Inserting row in users table
-                        Log.d(TAG, "++++++++++++++" + game.getGamer1_id());
                         db.addGame(game);
                         gameid=game.getId();
-                        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
-                        createWaitView(gameid);
+                        setField(gameid);
+
+
                     } else {
                         // Error in game creation
                         String errorMsg = jObj.getString("error_msg");
@@ -219,9 +218,10 @@ public class MainActivity extends Activity {
                 } catch (JSONException e) {
                     // JSON error
                     e.printStackTrace();
-                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                }
 
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    setMode(1);
+                }
             }
         }, new Response.ErrorListener() {
 
@@ -231,6 +231,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(getApplicationContext(),
                         error.getMessage(), Toast.LENGTH_LONG).show();
                 hideDialog();
+                setMode(1);
             }
         }) {
 
@@ -244,11 +245,80 @@ public class MainActivity extends Activity {
             }
 
         };
-
+        strReq.setRetryPolicy(new DefaultRetryPolicy(
+                0,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
+    /**
+     * Wait for second player
+     * */
+    private void setField(final String gameid) {
+        // Tag used to cancel the request
+        String tag_string_req = "req_settingGameField";
+
+        StringRequest strReq = new StringRequest(Request.Method.PUT,
+                AppConfig.URL_FIELD, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, "Set Field: " + response.toString());
+                isReady = false;
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+
+                    // Check for error node in json
+                    if (!error) {
+                        String field = jObj.getString("data");
+                        Log.d(TAG, "field" + field);
+                        db.setGameField(gameid, field);
+
+                        createWaitView(gameid);
+                        hideDialog();
+                        setMode(2);
+                    } else {
+                        // Error in response
+                        String errorMsg = jObj.getString("error_msg");
+                        Toast.makeText(getApplicationContext(),
+                                errorMsg, Toast.LENGTH_LONG).show();
+                        setMode(1);
+                    }
+                } catch (JSONException e) {
+                    // JSON error
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    setMode(1);
+                }
+                isReady = true;
+            }
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+                isReady = true;
+            }
+        }) {
+
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("gameid", gameid);
+                return params;
+            }
+
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
     /**
      * function to delete game
      * */
@@ -275,8 +345,8 @@ public class MainActivity extends Activity {
                     if (!error) {
                         db.deleteGame();
                         Log.d(TAG,"Game is deleted");
-                        timerHandler.postDelayed(timerRefreshGamesRunnable, 0);
                         removeWaitView();
+                        setMode(1);
                     } else {
                         // Error in game deletion
                         String errorMsg = jObj.getString("error_msg");
@@ -340,7 +410,7 @@ public class MainActivity extends Activity {
                         // Now store the game in SQLite
                         JSONArray obj = jObj.getJSONArray("data");
 
-                        if (!(obj.length() == 0)) {
+                        if (obj.length() > 0) {
                             Gson gson = new GsonBuilder().create();
                             games = gson.fromJson(obj.toString(), new TypeToken<ArrayList<Game>>() {}.getType());
                         }
@@ -357,7 +427,7 @@ public class MainActivity extends Activity {
                     }
 
                     if (!(games == null)) {
-                        if (!(games.equals(oldgames))) {
+                        if (!(games.equals(oldgames)) && (mode == 1)) {
                             createGamesView(games);
                             oldgames = games;
                         }
@@ -365,6 +435,7 @@ public class MainActivity extends Activity {
                     } else {
                         Log.d(TAG, "games is null");
                     }
+                hideDialog();
             }
         }, new Response.ErrorListener() {
 
@@ -392,8 +463,7 @@ public class MainActivity extends Activity {
     }
 
     private void startGame(final String gameID) {
-        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
-        timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+        setMode(3);
         startGameReq(gameID);
     }
 
@@ -468,67 +538,6 @@ public class MainActivity extends Activity {
     /**
      * Wait for second player
      * */
-    private void setField(final String gameid) {
-        // Tag used to cancel the request
-        String tag_string_req = "req_settingGameField";
-
-        StringRequest strReq = new StringRequest(Request.Method.PUT,
-                AppConfig.URL_FIELD, new Response.Listener<String>() {
-
-            @Override
-            public void onResponse(String response) {
-                Log.d(TAG, "Set Field: " + response.toString());
-                isReady = false;
-                try {
-                    JSONObject jObj = new JSONObject(response);
-                    boolean error = jObj.getBoolean("error");
-
-                    // Check for error node in json
-                    if (!error) {
-                        String field = jObj.getString("text");
-                        Log.d(TAG, "field" + field);
-                        db.setGameField(gameid, field);
-                    } else {
-                        // Error in response
-                        String errorMsg = jObj.getString("error_msg");
-                        Toast.makeText(getApplicationContext(),
-                                errorMsg, Toast.LENGTH_LONG).show();
-                    }
-                } catch (JSONException e) {
-                    // JSON error
-                    e.printStackTrace();
-                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-                isReady = true;
-            }
-        }, new Response.ErrorListener() {
-
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(TAG, "Login Error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(),
-                        error.getMessage(), Toast.LENGTH_LONG).show();
-                hideDialog();
-                isReady = true;
-            }
-        }) {
-
-            @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("gameid", gameid);
-                return params;
-            }
-
-        };
-
-        // Adding request to request queue
-        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
-    }
-
-    /**
-     * Wait for second player
-     * */
     private void waitForPlayer() {
         // Tag used to cancel the request
         String tag_string_req = "req_getGame";
@@ -551,8 +560,7 @@ public class MainActivity extends Activity {
                         String status = gameObj.getString("status");
                         if (status.equals(GameStatus.PREPARE.asString()))
                         {
-                            timerHandler.removeCallbacks(timerRefreshGamesRunnable);
-                            timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+                            setMode(3);
                             db.setGameStatus(GameStatus.PREPARE.asString(), gameid);
                             db.setGameField(gameid, gameObj.getString("field"));
                             Game game = db.getGameDetails();
@@ -614,7 +622,7 @@ public class MainActivity extends Activity {
     }
 
     private void createWaitView(final String gameID) {
-        removeAllViews();
+
 
         btnAddNewGame.setEnabled(false);
         btnAddNewGame.setAlpha(.5f);
@@ -664,11 +672,9 @@ public class MainActivity extends Activity {
             }
         });
         newLinearLayout.addView(newButton);
-
+        removeAllViews();
         waitviewLayout.addView(newLinearLayout);
-
-        timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
-        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+        hideDialog();
     }
 
     private void createGamesView(final List<Game> games) {
@@ -725,22 +731,11 @@ public class MainActivity extends Activity {
     }
 
 
-    private void showDialog() {
-        if (!pDialog.isShowing())
-            pDialog.show();
-    }
-
-    private void hideDialog() {
-        if (pDialog.isShowing())
-            pDialog.dismiss();
-    }
-
     public void getGame(final String uuid) {
         isReady = false;
         // Tag used to cancel the request
         String tag_string_req = "get_Game";
         String uri = AppConfig.URL_CREATENEWGAME + "/userid/" + uuid;
-    Log.i(TAG, uri);
         StringRequest strReq = new StringRequest(Method.GET,
                 uri, new Response.Listener<String>() {
 
@@ -769,7 +764,7 @@ public class MainActivity extends Activity {
                                     db.addGame(game);
                                     gameid = game.getId();
                                     createWaitView(game.getId());
-                                    timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+                                    setMode(2);
                                     break;
                                 case "PREPARED":
                                     Intent intent = new Intent(MainActivity.this, PrepareActivity.class);
@@ -793,17 +788,17 @@ public class MainActivity extends Activity {
                         }
                         else
                             {
-                                Log.d(TAG, "game is empty");
                                 db.deleteGame();
-                                timerHandler.postDelayed(timerRefreshGamesRunnable, 0);
+                                setMode(1);
                             }
                         }
                     }
                 catch (JSONException e) {
                     Log.d(TAG, e.getMessage());
+                    hideDialog();
                 }
 
-                hideDialog();
+
             }
         }, new Response.ErrorListener() {
             @Override
@@ -820,6 +815,35 @@ public class MainActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
+    private void showDialog() {
+        if (!pDialog.isShowing())
+            pDialog.show();
+    }
 
+    private void hideDialog() {
+        if (pDialog.isShowing())
+            pDialog.dismiss();
+    }
+
+    private void setMode(int mode)
+    {
+        this.mode =mode;
+        switch (mode)
+        {
+            case 1:
+                timerHandler.postDelayed(timerRefreshGamesRunnable, 0);
+                timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+                break;
+
+            case 2:
+                timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+                timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+                break;
+            default:
+                timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+                timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+
+        }
+    }
 
 }

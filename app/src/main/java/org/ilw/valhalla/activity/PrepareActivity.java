@@ -95,6 +95,8 @@ public class PrepareActivity extends Activity {
         // Progress dialog
         pDialog = new ProgressDialog(this);
         pDialog.setCancelable(false);
+        pDialog.setMessage("Loading ...");
+        showDialog();
         // SqLite database handler
         Bitmap bmp = BitmapFactory.decodeResource(getResources(),
                 R.drawable.man);
@@ -109,7 +111,7 @@ public class PrepareActivity extends Activity {
         {
             isPrepared = true;
         }
-        Log.d("ddf", new Boolean(isPrepared).toString());
+
         getGame(user.getId());
 
     }
@@ -142,7 +144,7 @@ public class PrepareActivity extends Activity {
                             db.addGame(game);
                             isFirstPlayer = (user.getId().equals(game.getGamer1_id())) ? true : false;
 
-                            getGladiators1(game.getGamer1_id());
+                            getGladiatorsFromServer();
                         }
                     }
                 }
@@ -165,108 +167,56 @@ public class PrepareActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
-    public void getGladiators1(final String uuid) {
+    public void getGladiatorsFromServer() {
 
         // Tag used to cancel the request
         String tag_string_req = "get_Gladiators";
-        String uri = AppConfig.URL_GLADIATOR + "/userid/" + uuid;
-        Log.d(TAG, "here" + uri);
-        StringRequest strReq = new StringRequest(Method.GET,
-                uri, new Response.Listener<String>() {
+        String uuid = isFirstPlayer ? game.getGamer1_id() : game.getGamer2_id();
+            String uri = AppConfig.URL_GLADIATOR + "/userid/" + uuid;
+            Log.d(TAG, "here" + uri);
+            StringRequest strReq = new StringRequest(Method.GET,
+                    uri, new Response.Listener<String>() {
 
-            @Override
-            public void onResponse(String response) {
-                Log.d(TAG, response);
-                List<Gladiator> returnValue = null;
-                try {
-                    JSONObject jObj = new JSONObject(response);
-                    boolean error = jObj.getBoolean("error");
-                    // Check for error node in json
-                    if (!error) {
-                        JSONArray obj = jObj.getJSONArray("data");
-                        Gson gson = new GsonBuilder().create();
-                        returnValue = gson.fromJson(obj.toString(), new TypeToken<ArrayList<Gladiator>>() {}.getType());
-                        db.deleteGladiators();
-                        db.addGladiator(returnValue);
-                        if (isFirstPlayer)
-                        {
+                @Override
+                public void onResponse(String response) {
+                    Log.d(TAG, response);
+                    List<Gladiator> returnValue = null;
+                    try {
+                        JSONObject jObj = new JSONObject(response);
+                        boolean error = jObj.getBoolean("error");
+                        // Check for error node in json
+                        if (!error) {
+                            JSONArray obj = jObj.getJSONArray("data");
+                            Gson gson = new GsonBuilder().create();
+                            returnValue = gson.fromJson(obj.toString(), new TypeToken<ArrayList<Gladiator>>() {
+                            }.getType());
+                            db.deleteGladiators();
+                            db.addGladiator(returnValue);
                             gladiators = returnValue;
                             Log.d(TAG, gladiators.toString());
                             gladiatorsWait = cloneList(returnValue);
+                            getFields(game.getField());
                         }
-                        getGladiators2(game.getGamer2_id());
+                    } catch (JSONException e) {
+                        Log.d(TAG, e.getMessage());
                     }
-                } catch (JSONException e) {
-                    Log.d(TAG, e.getMessage());
+                    hideDialog();
                 }
-                hideDialog();
-            }
 
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.d(TAG, "ERROR");
-                Log.e(TAG, "Login Error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(),
-                        error.getMessage(), Toast.LENGTH_LONG).show();
-                hideDialog();
-            }
-        }) {
-        };
-
-        // Adding request to request queue
-        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
-    }
-
-    public void getGladiators2(final String uuid) {
-
-        // Tag used to cancel the request
-        String tag_string_req = "get_Gladiators";
-        String uri = AppConfig.URL_GLADIATOR + "/userid/" + uuid;
-        Log.d(TAG, uri);
-        StringRequest strReq = new StringRequest(Method.GET,
-                uri, new Response.Listener<String>() {
-
-            @Override
-            public void onResponse(String response) {
-                Log.d(TAG, response);
-                List<Gladiator> returnValue = null;
-                try {
-                    JSONObject jObj = new JSONObject(response);
-                    boolean error = jObj.getBoolean("error");
-                    // Check for error node in json
-                    if (!error) {
-                        JSONArray userReq = jObj.getJSONArray("data");
-                        Gson gson = new GsonBuilder().create();
-                        returnValue = gson.fromJson(userReq.toString(), new TypeToken<ArrayList<Gladiator>>() {}.getType());
-                        db.addGladiator(returnValue);
-                        if (!isFirstPlayer)
-                        {
-                            gladiators = returnValue;
-                            Log.d(TAG, gladiators.toString());
-                            gladiatorsWait = cloneList(returnValue);
-                        }
-                        getFields(game.getField());
-                    }
-                } catch (JSONException e) {
-                    Log.d(TAG, e.getMessage());
-
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.d(TAG, "ERROR");
+                    Log.e(TAG, "Login Error: " + error.getMessage());
+                    Toast.makeText(getApplicationContext(),
+                            error.getMessage(), Toast.LENGTH_LONG).show();
+                    hideDialog();
                 }
-                hideDialog();
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(TAG, "Login Error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(),
-                        error.getMessage(), Toast.LENGTH_LONG).show();
-                hideDialog();
-            }
-        }) {
-        };
+            }) {
+            };
 
-        // Adding request to request queue
-        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+            // Adding request to request queue
+            AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
     /*public void getTurns(final String uuid, final String turnNumber) {
@@ -384,9 +334,7 @@ public class PrepareActivity extends Activity {
                                     }
                                 }
                             });
-                            //view2.setGladiators(gladiators);
-
-                            hideDialog();
+                            view2.setGladiators(gladiators);
                         }
                     }
                 } catch (JSONException e) {
@@ -446,61 +394,6 @@ public class PrepareActivity extends Activity {
         return returnValue;
     }
 
-    public int getActive() {
-        return active;
-    }
-
-    public void setActive(int active) {
-        this.active = active;
-    }
-
-    public HashMap<String, Bitmap> getmStore() {
-        return mStore;
-    }
-
-    public void setmStore(HashMap<String, Bitmap> mStore) {
-        this.mStore = mStore;
-    }
-
-    public List<Gladiator> getGladiators() {
-        return gladiators;
-    }
-
-    public void setGladiators(List<Gladiator> gladiators) {
-        this.gladiators = gladiators;
-    }
-
-    public List<Gladiator> getGladiatorsWait() {
-        return gladiatorsWait;
-    }
-
-    public void setGladiatorsWait(List<Gladiator> gladiatorsWait) {
-        this.gladiatorsWait = gladiatorsWait;
-    }
-
-    public GladiatorsView getView2() {
-        return view2;
-    }
-
-    public void setView2(GladiatorsView view2) {
-        this.view2 = view2;
-    }
-
-    public Map<Point, Gladiator> getGladiatorsSet() {
-        return gladiatorsSet;
-    }
-
-    public void setGladiatorsSet(Map<Point, Gladiator> gladiatorsSet) {
-        this.gladiatorsSet = gladiatorsSet;
-    }
-
-    public Point getActivePoint() {
-        return activePoint;
-    }
-
-    public void setActivePoint(Point activePoint) {
-        this.activePoint = activePoint;
-    }
 
     public static List<Gladiator> cloneList(List<Gladiator> list) {
         List<Gladiator> clone = new ArrayList<Gladiator>(list.size());
@@ -804,9 +697,11 @@ public class PrepareActivity extends Activity {
                         String status = gameObj.getString("status");
                         if (status.equals("PREPARED_WAITING"))
                         {
+
                             startGameReq();
                         }
                         else {
+                            showDialog();
                             setStatusPrepareWaiting();
                         }
                     } else {
@@ -1016,6 +911,7 @@ public class PrepareActivity extends Activity {
 
                     // Check for error node in json
                     if (!error) {
+                        hideDialog();
                         Intent intent = new Intent(PrepareActivity.this, GameActivity.class);
                         startActivity(intent);
                         finish();
@@ -1078,5 +974,62 @@ public class PrepareActivity extends Activity {
 
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+
+    public int getActive() {
+        return active;
+    }
+
+    public void setActive(int active) {
+        this.active = active;
+    }
+
+    public HashMap<String, Bitmap> getmStore() {
+        return mStore;
+    }
+
+    public void setmStore(HashMap<String, Bitmap> mStore) {
+        this.mStore = mStore;
+    }
+
+    public List<Gladiator> getGladiators() {
+        return gladiators;
+    }
+
+    public void setGladiators(List<Gladiator> gladiators) {
+        this.gladiators = gladiators;
+    }
+
+    public List<Gladiator> getGladiatorsWait() {
+        return gladiatorsWait;
+    }
+
+    public void setGladiatorsWait(List<Gladiator> gladiatorsWait) {
+        this.gladiatorsWait = gladiatorsWait;
+    }
+
+    public GladiatorsView getView2() {
+        return view2;
+    }
+
+    public void setView2(GladiatorsView view2) {
+        this.view2 = view2;
+    }
+
+    public Map<Point, Gladiator> getGladiatorsSet() {
+        return gladiatorsSet;
+    }
+
+    public void setGladiatorsSet(Map<Point, Gladiator> gladiatorsSet) {
+        this.gladiatorsSet = gladiatorsSet;
+    }
+
+    public Point getActivePoint() {
+        return activePoint;
+    }
+
+    public void setActivePoint(Point activePoint) {
+        this.activePoint = activePoint;
     }
 }

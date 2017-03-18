@@ -142,7 +142,6 @@ public class LoginActivity extends Activity {
             @Override
             public void onResponse(String response) {
                 Log.d(TAG, "Login Response: " + response.toString());
-                hideDialog();
 
                 try {
                     JSONObject jObj = new JSONObject(response);
@@ -162,7 +161,7 @@ public class LoginActivity extends Activity {
                         // Inserting row in users table
                         Log.d(TAG, "email" + email);
                         db.addUser(user);
-
+                        hideDialog();
                         // Launch main activity
                         Intent intent = new Intent(LoginActivity.this,
                                 MainActivity.class);
@@ -179,6 +178,7 @@ public class LoginActivity extends Activity {
                     e.printStackTrace();
                     Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
+                hideDialog();
 
             }
         }, new Response.ErrorListener() {
@@ -292,7 +292,6 @@ public class LoginActivity extends Activity {
                                     break;
                             }*/
                     }
-                    hideDialog();
                 } catch (JSONException e) {
                     Log.d(TAG, e.getMessage());
                 }
