@@ -3,7 +3,7 @@ package org.ilw.valhalla.app;
 public class AppConfig {
 
     // Server get field
-    public static String BASE_URL = "http://192.168.2.105:8080/evolution/";
+    public static String BASE_URL = "http://192.168.2.105:8080/evoGame/";
     //public static String BASE_URL = "http://127.0.0.1:8080/evolution/";
 
     // Server get field

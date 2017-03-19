@@ -767,12 +767,10 @@ public class MainActivity extends Activity {
                                     setMode(2);
                                     break;
                                 case "PREPARED":
-                                    Intent intent = new Intent(MainActivity.this, PrepareActivity.class);
-                                    startActivity(intent);
-                                    finish();
-                                    break;
                                 case "PREPARED_WAITING":
-                                    intent = new Intent(MainActivity.this, PrepareActivity.class);
+                                    db.deleteGame();
+                                    db.addGame(game);
+                                    Intent intent = new Intent(MainActivity.this, PrepareActivity.class);
                                     startActivity(intent);
                                     finish();
                                     break;

@@ -98,7 +98,6 @@ public class GamePrepareView extends View {
                             mCanvas.drawRect(x1, y1, x2, y2, paint);
                             break;
                         case 99:
-                            Log.d("TAG", new Float(x1).toString() + " " + new Float(x2).toString() + " " + new Float(y1).toString() + " " + new Float(y2).toString());
                             paint.setStyle(Paint.Style.FILL);
                             paint.setColor(Color.LTGRAY);
                             mCanvas.drawRect(x1, y1, x2, y2, paint);
@@ -117,8 +116,8 @@ public class GamePrepareView extends View {
                     }
                 }
             }
+            Map<Point, Gladiator> gladiators = ((PrepareActivity) getContext()).getGladiatorsSet();
             Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
-            Log.d("TAG", new Boolean(activePoint==null).toString());
             if (activePoint!=null)
             {
                 float x1 = activePoint.getX() * canvasSize / xLength;
@@ -128,8 +127,12 @@ public class GamePrepareView extends View {
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setColor(Color.YELLOW);
                 mCanvas.drawRect(x1, y1, x2, y2, paint);
+
+                ((PrepareActivity) getContext()).setLogInfo(gladiators.get(activePoint));
             }
-            Map<Point, Gladiator> gladiators = ((PrepareActivity) getContext()).getGladiatorsSet();
+
+
+
             if (gladiators.size() > 0) {
                 Iterator it = gladiators.entrySet().iterator();
                 while (it.hasNext()) {
@@ -247,15 +250,16 @@ public class GamePrepareView extends View {
                 {
                     if (((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y)))))
                     {
-                    //Log.d("TAG", gladiatorsSet.toString());
-                    gladiatorsSet.put(new Point(x,y), gladiators.get(active));
-                    ((PrepareActivity)getContext()).setGladiatorsSet(gladiatorsSet);
+                        //Log.d("TAG", gladiatorsSet.toString());
+                        gladiatorsSet.put(new Point(x,y), gladiators.get(active));
+                        ((PrepareActivity)getContext()).setGladiatorsSet(gladiatorsSet);
 
-                    drawField();
-                    invalidate();
-                    gladiators.remove(active);
-                    ((PrepareActivity)getContext()).getView2().invalidate();
-                    ((PrepareActivity)getContext()).setActive(-1);
+                        drawField();
+                        invalidate();
+                        gladiators.remove(active);
+                        ((PrepareActivity)getContext()).getView2().invalidate();
+                        ((PrepareActivity)getContext()).setActive(-1);
+                        ((PrepareActivity) getContext()).setLogInfo(null);
                     }
                 }
 
@@ -263,6 +267,7 @@ public class GamePrepareView extends View {
                     if (activePoint.equals(new  Point(x, y)))
                     {
                         ((PrepareActivity)getContext()).setActivePoint(null);
+                        ((PrepareActivity) getContext()).setLogInfo(null);
                     } else
                     {
                         if (((cells[y*2][x*2]==98) || (cells[y*2][x*2]==99)) && (!(gladiatorsSet.containsKey(new Point(x, y))))) {
@@ -272,6 +277,7 @@ public class GamePrepareView extends View {
                             ((PrepareActivity) getContext()).setGladiatorsSet(gladiatorsSet);
                             ((PrepareActivity)getContext()).setActivePoint(null);
                             ((PrepareActivity) getContext()).getView2().invalidate();
+
                         }
                     }
                     drawField();

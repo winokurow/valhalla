@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -49,7 +50,7 @@ import java.util.Map;
 public class PrepareActivity extends Activity {
     private Button btnStartGame;
     private Button btnCancelGame;
-
+    protected TextView textView;
     private SQLiteHandler db;
     private SessionManager session;
     private ProgressDialog pDialog;
@@ -92,6 +93,7 @@ public class PrepareActivity extends Activity {
         timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
 
         super.onCreate(savedInstanceState);
+
         // Progress dialog
         pDialog = new ProgressDialog(this);
         pDialog.setCancelable(false);
@@ -306,6 +308,7 @@ public class PrepareActivity extends Activity {
                             showDialog();
                             timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
                         } else {
+                            textView = (TextView) findViewById(R.id.text_prep_id);
                             btnCancelGame = (Button) findViewById(R.id.btnCancelGame);
                             btnStartGame = (Button) findViewById(R.id.btnStartGame);
                             // Cancel Game
@@ -976,6 +979,30 @@ public class PrepareActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
+    public void setLogInfo(Gladiator gladiator)
+    {
+        StringBuilder text = new StringBuilder();
+        if (gladiator!=null) {
+            text.append("\nGladiator:");
+            text.append("\n   Name: ");
+            text.append(gladiator.getName());
+            text.append("\n   Str: ");
+            text.append(gladiator.getStr());
+            text.append("   Dex: ");
+            text.append(gladiator.getDex());
+            text.append("\n   Spd: ");
+            text.append(gladiator.getSpd());
+            text.append("   Con: ");
+            text.append(gladiator.getCon());
+            text.append("\n   Int: ");
+            text.append(gladiator.getIntel());
+            text.append("   Stamina: ");
+            text.append(gladiator.getStamina());
+            text.append("\n   Martial Art: ");
+            text.append(gladiator.getMart_art());
+        }
+        getTextView().setText(text.toString());
+    }
 
     public int getActive() {
         return active;
@@ -1031,5 +1058,13 @@ public class PrepareActivity extends Activity {
 
     public void setActivePoint(Point activePoint) {
         this.activePoint = activePoint;
+    }
+
+    public TextView getTextView() {
+        return textView;
+    }
+
+    public void setTextView(TextView textView) {
+        this.textView = textView;
     }
 }

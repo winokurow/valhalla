@@ -88,12 +88,13 @@ public class GladiatorsView extends View {
                         paint2.setColor(Color.BLACK);
                         paint2.setTextSize(40);
                         int init = 50;
-                        mCanvas.drawText("Name: " + gladiators.get(active).getName(), 30, canvasY2Size + init, paint2);
+                        ((PrepareActivity) getContext()).setLogInfo(gladiators.get(active));
+                        /*mCanvas.drawText("Name: " + gladiators.get(active).getName(), 30, canvasY2Size + init, paint2);
                         mCanvas.drawText("Str:  " + gladiators.get(active).getStr() + "    " + "Dex: " + gladiators.get(active).getDex(), 30, canvasY2Size + init + 50, paint2);
                         mCanvas.drawText("Spd:  " + gladiators.get(active).getSpd() + "  " + "Con: " + gladiators.get(active).getCon(), 30, canvasY2Size + init + 100, paint2);
                         mCanvas.drawText("Int: " + gladiators.get(active).getIntel() + "     " + "Stamina: " + gladiators.get(active).getStamina(), 30, canvasY2Size + init + 150, paint2);
                         mCanvas.drawText("Martial Art: " + gladiators.get(active).getMart_art(), 30, canvasY2Size + init + 250, paint2);
-
+*/
                     }
                 }
             } else {
@@ -154,6 +155,7 @@ public class GladiatorsView extends View {
                 if (((PrepareActivity) getContext()).getActive() != -1)
                 {
                     ((PrepareActivity) getContext()).setActive(-1);
+                    ((PrepareActivity) getContext()).setLogInfo(null);
                 } else {
                     Point activePoint = ((PrepareActivity)getContext()).getActivePoint();
                     if (activePoint == null) {
@@ -164,6 +166,7 @@ public class GladiatorsView extends View {
                         ((PrepareActivity) getContext()).getGladiatorsWait().add(gladiatorsSet.get(activePoint));
                         gladiatorsSet.remove(activePoint);
                         ((PrepareActivity)getContext()).setActivePoint(null);
+                        ((PrepareActivity) getContext()).setLogInfo(null);
                         ((PrepareActivity)getContext()).getView().drawField();
                         ((PrepareActivity)getContext()).getView().invalidate();
                     }
