@@ -277,10 +277,10 @@ public class GameView extends View {
 
                         queue.remove(queue.firstKey());
 
-                            Double time = queue.firstKey();
-                            double speed = gladiator1.getSpd() / 5.00;
-                            time = time + 1.2 / speed;
-                            ((GameActivity) getContext()).addQueue(time, point);
+                        Double time = queue.firstKey();
+                        double speed = gladiator1.getSpd() / 5.00;
+                        time = time + 1.2 / speed;
+                        ((GameActivity) getContext()).addQueue(time, point);
 
                         ((GameActivity) getContext()).setTurnNumber(value.getTurn());
                         ((GameActivity) getContext()).addLogString(value.getTurn() + ": "+gladiator1.getName() + " kicked "+ gladiator2.getName() + "\n");
@@ -294,7 +294,7 @@ public class GameView extends View {
                                 break;
                             }
                         }
-                        queue.remove(key);
+                        //queue.remove(key);
 
                         if (popad>0) {
                             if (sila>0)
@@ -456,7 +456,6 @@ public class GameView extends View {
                         int yPos2 = Integer.parseInt(value.getValue2().split(";")[1]);
 
                         Gladiator gladiator = ((GameActivity) getContext()).getGladiatorById(field[yPos1][xPos1].getGladiator());
-
                         field[yPos2][xPos2].setGladiator(gladiator.getId());
                         field[yPos2][xPos2].setGladiatorDirection(field[yPos1][xPos1].getGladiatorDirection());
                         field[yPos2][xPos2].setOwner(field[yPos1][xPos1].getOwner());

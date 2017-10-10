@@ -19,6 +19,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
@@ -90,6 +91,13 @@ public class GameActivity extends Activity {
             timerHandler.postDelayed(this, 2000);
         }
     };
+
+    @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        timerHandler.removeCallbacks(timerWaitForTurnRunnable);
+    }
 
     public Context getContext() {
         return (Context)this;
@@ -246,6 +254,8 @@ public class GameActivity extends Activity {
                     gameView.invalidate();
                     queueView.invalidate();
                     getTextView().setText(logString);
+                    String temp = getTextView().getText().toString();
+                    getTextView().invalidate();
                     scrollInfo();
                     gameEndVerification();
                     isLocked = false;
@@ -299,13 +309,14 @@ public class GameActivity extends Activity {
     {
         isLocked = true;
         Turn turn;
-        switch(action)
+        /*switch(action)
         {
             case "walk":
 
 
                 break;
         }
+        */
         String host = isFirstPlayer?"1":"2";
         turn = new Turn (Integer.parseInt(game.getId()), turnNumber+1, host, action, value1, value2, value3, "", "");
         turns.put(turn.getTurn(), turn);
@@ -380,7 +391,8 @@ public class GameActivity extends Activity {
             }
 
         };
-
+        strReq.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
@@ -640,6 +652,9 @@ public class GameActivity extends Activity {
                 AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
 
                 break;
+            } else {
+                updateGladiator(i + 1);
+                return;
             }
         }
     }

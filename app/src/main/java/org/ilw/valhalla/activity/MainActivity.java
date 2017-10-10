@@ -89,10 +89,18 @@ public class MainActivity extends Activity {
     };
 
     @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        timerHandler.removeCallbacks(timerRefreshGamesRunnable);
+        timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        Log.i("Login", "Perfomance5");
         txtName = (TextView) findViewById(R.id.name);
         txtPoints = (TextView) findViewById(R.id.points);
         btnLogout = (Button) findViewById(R.id.btnLogout);
@@ -146,9 +154,10 @@ public class MainActivity extends Activity {
                     logoutUser();
                 }
             });
-
+        hideDialog();
         pDialog.setMessage("Loading ...");
         showDialog();
+        Log.i("Login", "Perfomance6");
         this.getGame(user.getId());
 
     }
@@ -278,7 +287,6 @@ public class MainActivity extends Activity {
                         db.setGameField(gameid, field);
 
                         createWaitView(gameid);
-                        hideDialog();
                         setMode(2);
                     } else {
                         // Error in response
@@ -473,7 +481,7 @@ public class MainActivity extends Activity {
     private void startGameReq(final String gameid) {
         // Tag used to cancel the request
         String tag_string_req = "req_startGame";
-
+        hideDialog();
         pDialog.setMessage("Starting Game ...");
         showDialog();
         Log.d(TAG, gameid);
@@ -483,8 +491,6 @@ public class MainActivity extends Activity {
             @Override
             public void onResponse(String response) {
                 Log.d(TAG, "Start Game Response: " + response.toString());
-                hideDialog();
-
                 try {
                     JSONObject jObj = new JSONObject(response);
                     boolean error = jObj.getBoolean("error");
@@ -574,11 +580,12 @@ public class MainActivity extends Activity {
                         String errorMsg = jObj.getString("error_msg");
                         Toast.makeText(getApplicationContext(),
                                 errorMsg, Toast.LENGTH_LONG).show();
+
                     }
                 } catch (JSONException e) {
                     // JSON error
                     e.printStackTrace();
-                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    //Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
 
                 }
 
@@ -690,7 +697,7 @@ public class MainActivity extends Activity {
             params.gravity = Gravity.TOP;
             params.setMargins(5, 5, 5, 5);
             newLinearLayout.setOrientation(LinearLayout.HORIZONTAL);
-            newLinearLayout.setBackgroundResource(R.drawable.border);
+            newLinearLayout.setBackgroundResource(R.drawable.borderlogin);
             newLinearLayout.setLayoutParams(params);
 
             final TextView rowTextView = new TextView(context);
@@ -736,11 +743,13 @@ public class MainActivity extends Activity {
         // Tag used to cancel the request
         String tag_string_req = "get_Game";
         String uri = AppConfig.URL_CREATENEWGAME + "/userid/" + uuid;
+        Log.i("Login", "Perfomance7");
         StringRequest strReq = new StringRequest(Method.GET,
                 uri, new Response.Listener<String>() {
 
             @Override
             public void onResponse(String response) {
+                Log.i("Login", "Perfomance8");
                 Game returnValue = null;
                 try {
                     Log.d(TAG, response);
@@ -758,6 +767,7 @@ public class MainActivity extends Activity {
                             game = returnValue;
 
                             Log.d(TAG, "game is not empty empty");
+                            Log.i("Login", "Perfomance9");
                             switch (game.getStatus()) {
                                 case "WAITING":
                                     db.deleteGame();
@@ -794,6 +804,7 @@ public class MainActivity extends Activity {
                 catch (JSONException e) {
                     Log.d(TAG, e.getMessage());
                     hideDialog();
+                    Log.i("Login", "Perfomance9");
                 }
 
 
@@ -814,6 +825,7 @@ public class MainActivity extends Activity {
     }
 
     private void showDialog() {
+        hideDialog();
         if (!pDialog.isShowing())
             pDialog.show();
     }

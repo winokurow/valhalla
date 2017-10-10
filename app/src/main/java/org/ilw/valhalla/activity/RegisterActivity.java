@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -66,7 +67,7 @@ public class RegisterActivity extends Activity {
                     registerUser(name, email, password);
                 } else {
                     Toast.makeText(getApplicationContext(),
-                            "Please enter your details!", Toast.LENGTH_LONG)
+                            R.string.registration_error_fields_are_empty, Toast.LENGTH_LONG)
                             .show();
                 }
             }
@@ -94,7 +95,7 @@ public class RegisterActivity extends Activity {
         // Tag used to cancel the request
         String tag_string_req = "req_register";
 
-        pDialog.setMessage("Registering ...");
+        pDialog.setMessage(getString(R.string.registration_progress_registering));
         showDialog();
 
         StringRequest strReq = new StringRequest(Method.POST,
@@ -111,7 +112,7 @@ public class RegisterActivity extends Activity {
                     if (!error) {
 
 
-                        Toast.makeText(getApplicationContext(), "User successfully registered. Try login now!", Toast.LENGTH_LONG).show();
+                        Toast.makeText(getApplicationContext(), R.string.registration_text_registration_success, Toast.LENGTH_LONG).show();
 
                         // Launch login activity
                         Intent intent = new Intent(
@@ -157,6 +158,8 @@ public class RegisterActivity extends Activity {
         };
 
         // Adding request to request queue
+        strReq.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 

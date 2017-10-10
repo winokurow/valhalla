@@ -3,9 +3,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:background="@color/bg_login"
     android:gravity="center"
     android:orientation="vertical"
+    android:background="@drawable/borderlogin"
     android:padding="10dp" >
 
     <LinearLayout
@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
             android:background="@color/white"
-            android:hint="@string/hint_email"
+            android:hint="@string/login_hint_email"
             android:inputType="textEmailAddress"
             android:padding="10dp"
             android:singleLine="true"

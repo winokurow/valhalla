@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -65,6 +66,7 @@ public class LoginActivity extends Activity {
         btnLogin.setOnClickListener(new View.OnClickListener() {
 
             public void onClick(View view) {
+                Log.i("Login", "Perfomance1");
                 String email = inputEmail.getText().toString().trim();
                 String password = inputPassword.getText().toString().trim();
 
@@ -111,7 +113,7 @@ public class LoginActivity extends Activity {
         }
         if (session.isLoggedIn()) {
             pDialog.setMessage("Starting ...");
-            pDialog.show();
+            showDialog();
             // get current data
             user = db.getUserDetails();
 
@@ -135,7 +137,7 @@ public class LoginActivity extends Activity {
 
         pDialog.setMessage("Logging in ...");
         showDialog();
-
+        Log.i("Login", "Perfomance2");
         StringRequest strReq = new StringRequest(Method.POST,
                 AppConfig.URL_USER, new Response.Listener<String>() {
 
@@ -144,6 +146,7 @@ public class LoginActivity extends Activity {
                 Log.d(TAG, "Login Response: " + response.toString());
 
                 try {
+                    Log.i("Login", "Perfomance3");
                     JSONObject jObj = new JSONObject(response);
                     boolean error = jObj.getBoolean("error");
 
@@ -159,13 +162,14 @@ public class LoginActivity extends Activity {
                         User user = gson.fromJson(userReq.toString(), User.class);
 
                         // Inserting row in users table
-                        Log.d(TAG, "email" + email);
                         db.addUser(user);
-                        hideDialog();
+
+                        Log.i("Login", "Perfomance4");
                         // Launch main activity
                         Intent intent = new Intent(LoginActivity.this,
                                 MainActivity.class);
                         startActivity(intent);
+                        hideDialog();
                         finish();
                     } else {
                         // Error in login. Get the error message
@@ -209,8 +213,11 @@ public class LoginActivity extends Activity {
     }
 
     private void showDialog() {
-        if (!pDialog.isShowing())
-            pDialog.show();
+        if (pDialog.isShowing())
+        {
+            pDialog.dismiss();
+        }
+        pDialog.show();
     }
 
     private void hideDialog() {
@@ -244,6 +251,7 @@ public class LoginActivity extends Activity {
 
                         db.addUser(user);
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        Log.i("Login", "Perfomance4");
                         startActivity(intent);
                         finish();
 
@@ -310,6 +318,8 @@ public class LoginActivity extends Activity {
         };
 
         // Adding request to request queue
+        strReq.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 /*

@@ -1,12 +1,26 @@
 <resources>
     <string name="app_name">Valhalla</string>
-    <string name="hint_email">Email</string>
+
+    <!--Activity Registration-->
+    <string name="registration_hint_name">Fullname</string>
+    <string name="registration_hint_email">Email</string>
+    <string name="registration_hint_password">Password</string>
+    <string name="registration_btn_register">REGISTER</string>
+    <string name="registration_btn_link_to_login">Already registred! Login Me.</string>
+    <string name="registration_progress_registering">Registering …</string>
+    <string name="registration_text_registration_success">User successfully registered. Try login now!</string>
+
+    <string name="registration_error_fields_are_empty">Please fill the fields!</string>
+
+    <!--Activity Login-->
+    <string name="login_hint_email">Email</string>
+
     <string name="hint_password">Password</string>
     <string name="hint_name">Fullname</string>
     <string name="btn_login">LOGIN</string>
-    <string name="btn_register">REGISTER</string>
+
     <string name="btn_link_to_register">Not a member? Sign up now.</string>
-    <string name="btn_link_to_login">Already registred! Login Me.</string>
+
     <string name="welcome">Welcome</string>
     <string name="btn_addGame">CREATE NEW GAME</string>
     <string name="btn_logout">LOGOUT</string>
@@ -14,4 +28,7 @@
     <string name="title_activity_main">MainActivity</string>
     <string name="btn_startGame">START GAME</string>
     <string name="btn_cancelGame">CANCEL GAME</string>
+    <string name="btn_inventory">Inventory</string>
+    <string name="test">Please fill the fields!</string>
+
 </resources>

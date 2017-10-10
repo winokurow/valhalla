@@ -8,11 +8,16 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout.LayoutParams;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Request.Method;
 import com.android.volley.Response;
@@ -50,7 +55,9 @@ import java.util.Map;
 public class PrepareActivity extends Activity {
     private Button btnStartGame;
     private Button btnCancelGame;
+    private Button btnInventory;
     protected TextView textView;
+
     private SQLiteHandler db;
     private SessionManager session;
     private ProgressDialog pDialog;
@@ -88,11 +95,22 @@ public class PrepareActivity extends Activity {
     };
 
     @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         timerHandler.removeCallbacks(timerWaitForPlayerRunnable);
 
         super.onCreate(savedInstanceState);
+
+        // Init Popup
+        btnInventory = (Button) findViewById(R.id.btnInventory);
+
 
         // Progress dialog
         pDialog = new ProgressDialog(this);
@@ -146,11 +164,12 @@ public class PrepareActivity extends Activity {
                             db.addGame(game);
                             isFirstPlayer = (user.getId().equals(game.getGamer1_id())) ? true : false;
 
-                            getGladiatorsFromServer();
+                            getGladiators1();
                         }
                     }
                 }
                 catch (JSONException e) {
+                    hideDialog();
                     Log.d(TAG, e.getMessage());
                 }
             }
@@ -169,7 +188,7 @@ public class PrepareActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
-    public void getGladiatorsFromServer() {
+    public void getGladiators1() {
 
         // Tag used to cancel the request
         String tag_string_req = "get_Gladiators";
@@ -198,8 +217,11 @@ public class PrepareActivity extends Activity {
                             Log.d(TAG, gladiators.toString());
                             gladiatorsWait = cloneList(returnValue);
                             getFields(game.getField());
+                            String uuid2 = isFirstPlayer ? game.getGamer2_id() : game.getGamer1_id();
+                            getGladiators2(uuid2);
                         }
                     } catch (JSONException e) {
+                        hideDialog();
                         Log.d(TAG, e.getMessage());
                     }
                     hideDialog();
@@ -219,6 +241,51 @@ public class PrepareActivity extends Activity {
 
             // Adding request to request queue
             AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+    }
+
+    public void getGladiators2(final String uuid) {
+
+        // Tag used to cancel the request
+        String tag_string_req = "get_Gladiators";
+        String uri = AppConfig.URL_GLADIATOR + "/userid/" + uuid;
+        Log.d(TAG, uri);
+        StringRequest strReq = new StringRequest(Method.GET,
+                uri, new Response.Listener<String>() {
+
+            @Override
+            public void onResponse(String response) {
+                Log.d(TAG, response);
+                List<Gladiator> returnValue = null;
+                try {
+                    JSONObject jObj = new JSONObject(response);
+                    boolean error = jObj.getBoolean("error");
+                    // Check for error node in json
+                    if (!error) {
+                        JSONArray userReq = jObj.getJSONArray("data");
+                        Gson gson = new GsonBuilder().create();
+                        returnValue = gson.fromJson(userReq.toString(), new TypeToken<ArrayList<Gladiator>>() {}.getType());
+                        db.addGladiator(returnValue);
+                        getFields(game.getField());
+                    }
+                } catch (JSONException e) {
+                    Log.d(TAG, e.getMessage());
+
+                }
+                hideDialog();
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e(TAG, "Login Error: " + error.getMessage());
+                Toast.makeText(getApplicationContext(),
+                        error.getMessage(), Toast.LENGTH_LONG).show();
+                hideDialog();
+            }
+        }) {
+        };
+
+        // Adding request to request queue
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
     /*public void getTurns(final String uuid, final String turnNumber) {
@@ -308,9 +375,11 @@ public class PrepareActivity extends Activity {
                             showDialog();
                             timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
                         } else {
+                            hideDialog();
                             textView = (TextView) findViewById(R.id.text_prep_id);
                             btnCancelGame = (Button) findViewById(R.id.btnCancelGame);
                             btnStartGame = (Button) findViewById(R.id.btnStartGame);
+                            btnInventory = (Button) findViewById(R.id.btnInventory);
                             // Cancel Game
                             if (user.getPoints() > 5) {
                                 btnCancelGame.setOnClickListener(new View.OnClickListener() {
@@ -332,9 +401,35 @@ public class PrepareActivity extends Activity {
                                         Toast.makeText(getApplicationContext(),
                                                 "Please set the gladiators on field.", Toast.LENGTH_LONG).show();
                                     } else {
-
-                                        getGameStatus();
+                                        pDialog.setMessage("Starting ...");
+                                        showDialog();
+                                        setStatusPrepareWaiting();
+                                        //getGameStatus();
                                     }
+                                }
+                            });
+
+                            btnInventory.setOnClickListener(new View.OnClickListener() {
+
+                                public void onClick(View view) {
+                                    LayoutInflater layoutInflater
+                                            = (LayoutInflater)getBaseContext()
+                                            .getSystemService(LAYOUT_INFLATER_SERVICE);
+                                    View popupView = layoutInflater.inflate(R.layout.popup_inventory, null);
+                                    final PopupWindow popupWindow = new PopupWindow(
+                                            popupView,
+                                            LayoutParams.WRAP_CONTENT,
+                                            LayoutParams.WRAP_CONTENT);
+
+                                    Button btnDismiss = (Button)popupView.findViewById(R.id.dismiss);
+                                    btnDismiss.setOnClickListener(new Button.OnClickListener(){
+
+                                        @Override
+                                        public void onClick(View v) {
+                                            // TODO Auto-generated method stub
+                                            popupWindow.dismiss();
+                                        }});
+                                    popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
                                 }
                             });
                             view2.setGladiators(gladiators);
@@ -639,7 +734,9 @@ public class PrepareActivity extends Activity {
                     // Check for error node in json
                     if (!error) {
                         db.setGameStatus(GameStatus.STARTED.asString(), game.getId());
-                        addTurn2();
+                        Intent intent = new Intent(PrepareActivity.this, GameActivity.class);
+                        startActivity(intent);
+                        finish();
                     } else {
                         String errorMsg = jObj.getString("error_msg");
                         Toast.makeText(getApplicationContext(),
@@ -678,73 +775,6 @@ public class PrepareActivity extends Activity {
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
-    /**
-     * Read status
-     * */
-    private void getGameStatus() {
-        // Tag used to cancel the request
-        String tag_string_req = "req_getGameStatus";
-        StringRequest strReq = new StringRequest(Request.Method.GET,
-                AppConfig.URL_CREATENEWGAME + "/game/"+game.getId(), new Response.Listener<String>() {
-
-            @Override
-            public void onResponse(String response) {
-                Log.d(TAG, "Get Status: " + response.toString());
-
-                try {
-                    JSONObject jObj = new JSONObject(response);
-                    boolean error = jObj.getBoolean("error");
-                    // Check for error node in json
-                    if (!error) {
-                        JSONObject gameObj = jObj.getJSONObject("data");
-                        String status = gameObj.getString("status");
-                        if (status.equals("PREPARED_WAITING"))
-                        {
-
-                            startGameReq();
-                        }
-                        else {
-                            showDialog();
-                            setStatusPrepareWaiting();
-                        }
-                    } else {
-                        String errorMsg = jObj.getString("error_msg");
-                        Toast.makeText(getApplicationContext(),
-                                errorMsg, Toast.LENGTH_LONG).show();
-                    }
-                } catch (JSONException e) {
-                    // JSON error
-                    e.printStackTrace();
-                    Toast.makeText(getApplicationContext(), "Json error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-
-                }
-
-            }
-        }, new Response.ErrorListener() {
-
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(TAG, "Login Error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(),
-                        error.getMessage(), Toast.LENGTH_LONG).show();
-                hideDialog();
-            }
-        }) {
-
-            @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("gameid", game.getId());
-                params.put("host", "ENDED");
-                params.put("userid", game.getGamer2_id());
-                return params;
-            }
-
-        };
-
-        // Adding request to request queue
-        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
-    }
 
     /**
      * function to start game
@@ -767,12 +797,18 @@ public class PrepareActivity extends Activity {
 
                     // Check for error node in json
                     if (!error) {
-                        db.setGameStatus(GameStatus.PREPARE_WAITING.asString(), game.getId());
-                        game = db.getGameDetails();
-                        Log.d("ddf", "STATUS" + game.getStatus());
-                        pDialog.setMessage("Waiting for second player ...");
-                        showDialog();
-                        addTurn1();
+                        JSONObject gameObj = jObj.getJSONObject("data");
+                        String status = gameObj.getString("status");
+                        addTurn();
+                        db.setGameStatus(status, game.getId());
+                        if (status.equals("PREPARED")) {
+                            pDialog.setMessage("Waiting for second player ...");
+                            showDialog();
+                            timerHandler.postDelayed(timerWaitForPlayerRunnable, 0);
+                        } else {
+                            hideDialog();
+                            startGameReq();
+                        }
 
                     } else {
                         String errorMsg = jObj.getString("error_msg");
@@ -815,7 +851,7 @@ public class PrepareActivity extends Activity {
     /**
      * function to add turn
      * */
-    private void addTurn1() {
+    private void addTurn() {
         // Tag used to cancel the request
         String tag_string_req = "req_addTurn1";
 
@@ -865,10 +901,12 @@ public class PrepareActivity extends Activity {
                 if (isFirstPlayer)
                 {
                     params.put("host", "1");
+                    params.put("turn", "-11");
                 } else {
                     params.put("host", "2");
+                    params.put("turn", "-10");
                 }
-                params.put("turn", "-11");
+
                 params.put("action", "set");
                 String glad = "";
                 Iterator it = gladiatorsSet.entrySet().iterator();
@@ -889,7 +927,8 @@ public class PrepareActivity extends Activity {
             }
 
         };
-
+        strReq.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
@@ -974,7 +1013,8 @@ public class PrepareActivity extends Activity {
             }
 
         };
-
+        strReq.setRetryPolicy(new DefaultRetryPolicy(20 * 1000, 0,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         // Adding request to request queue
         AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
@@ -1003,6 +1043,9 @@ public class PrepareActivity extends Activity {
         }
         getTextView().setText(text.toString());
     }
+
+
+
 
     public int getActive() {
         return active;
